@@ -1,16 +1,37 @@
-MIDIClient.init;
-~l = LaunchpadDrumSeq(4, 4);
-~l.nextStep;
-~l.draw;
-
-SynthDef(\a, { EnvGen.ar(Env.linen(0, 0, 0.00001), doneAction: 2)}).add;
-
 (
-Pdef(\test, Pbind(
-	\instrument, \a,
-	\a, Pfunc({ ~l.nextStep; ~l.draw }),
-	\dur, 1/8
-)).play
+MIDIClient.init;
+~l = LaunchpadDrumSeq(2, 2);
 )
 
-Pdef(\test).stop;
+~l.reset;
+
+(
+Tdef(\seq, {
+	i = 0;
+	loop{
+		var seq = ~l.slots[0].sequence;
+		var numSteps = ~l.slots[0].numSteps;
+		~l.nextStep;
+		if(seq[i%numSteps] == 1){Synth(\test)};
+
+		i = i+1;
+		0.25.wait;
+	}
+}).play;
+)
+
+Tdef(\seq).stop;
+
+(
+SynthDef(\test, {|out|
+	var envF, envA, sig;
+	envF = EnvGen.kr(Env.perc(0.001, 0.1, 1, -12));
+	envA = EnvGen.ar(Env.perc(0.001, 0.5, 1, -3), doneAction: 2);
+	sig = SinOsc.ar(envF.linexp(0, 1, 50, 1000), 0, envA) ! 2;
+	Out.ar(out, sig);
+}).add;
+)
+
+Synth(\test)
+
+TempoClock.default.tempo_(110/60)

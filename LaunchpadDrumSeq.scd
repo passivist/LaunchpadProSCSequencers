@@ -1,18 +1,21 @@
 (
+TempoClock.default.tempo_(110/60);
 MIDIClient.init;
-~l = LaunchpadDrumSeq(2, 2);
+~l = LaunchpadDrumSeq(4, 4);
+~bd = Buffer.read(s, "/Volumes/SSD 500 GB/Samples/DRITTE/SAMPLES/VINTAGE MACHINES/[KB6]_Roland_CR8000/cr8k01.wav");
+~sd = Buffer.read(s, "/Volumes/SSD 500 GB/Samples/DRITTE/SAMPLES/VINTAGE MACHINES/[KB6]_Roland_CR8000/cr8k07.wav");
+~hh = Buffer.read(s, "/Volumes/SSD 500 GB/Samples/DRITTE/SAMPLES/VINTAGE MACHINES/[KB6]_Roland_CR8000/cr8k14.wav");
 )
 
-~l.reset;
-
 (
+~l.addSlot(0, 0,  { PlayBuf.ar(1, ~bd, doneAction: 2) ! 2 * 0.5; });
+~l.addSlot(0, 1, { PlayBuf.ar(1, ~sd, doneAction: 2) ! 2 * 0.3; });
+~l.addSlot(6, 0, { PlayBuf.ar(1, ~hh, doneAction: 2) ! 2 * 0.3; });
+
 Tdef(\seq, {
 	i = 0;
 	loop{
-		var seq = ~l.slots[0].sequence;
-		var numSteps = ~l.slots[0].numSteps;
 		~l.nextStep;
-		if(seq[i%numSteps] == 1){Synth(\test)};
 
 		i = i+1;
 		0.25.wait;
@@ -22,16 +25,28 @@ Tdef(\seq, {
 
 Tdef(\seq).stop;
 
+~l.reset;
+
+
+~l.slots[0].synthFunc.play;
+
 (
-SynthDef(\test, {|out|
-	var envF, envA, sig;
-	envF = EnvGen.kr(Env.perc(0.001, 0.1, 1, -12));
-	envA = EnvGen.ar(Env.perc(0.001, 0.5, 1, -3), doneAction: 2);
-	sig = SinOsc.ar(envF.linexp(0, 1, 50, 1000), 0, envA) ! 2;
-	Out.ar(out, sig);
-}).add;
+Tdef(\test, {
+	var numSteps, offset, i;
+	numSteps = -4;
+	offset = 0;
+	i = 0;
+	loop{
+		var step;
+		i = (i + 1) % numSteps;
+		if(numSteps.isNegative){
+			step = (i + numSteps).abs + offset;
+		}{
+			step = (i + offset);
+		};
+		step.postln;
+		0.25.wait;
+	}
+}).play;
 )
 
-Synth(\test)
-
-TempoClock.default.tempo_(110/60)

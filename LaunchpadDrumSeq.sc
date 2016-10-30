@@ -1,8 +1,9 @@
 LaunchpadDrumSeqSlot {
 	var <>currentStep, <>prevStep, i;
 	var <>numSteps, <>offset;
-	var <>sequence, <>synthFuncs;
+	var <>sequence, <>synthFuncs, synth;
 	var <>selectedVar;
+	var <>mute;
 
 	*new {
 		^super.new.init()
@@ -17,6 +18,8 @@ LaunchpadDrumSeqSlot {
 		sequence = 0 ! 32;
 		selectedVar = 0;
 
+		mute = false;
+
 		synthFuncs = Array.newClear(32);
 	}
 
@@ -28,7 +31,15 @@ LaunchpadDrumSeqSlot {
 		}{
 			currentStep = (i + numSteps).abs + offset;
 		}
+	}
 
+	play { |i|
+		if(synth.isPlaying){ synth.free };
+
+		if(mute.not){
+			synth = synthFuncs[i].value;
+			NodeWatcher.register(synth);
+		};
 	}
 }
 
@@ -36,7 +47,7 @@ LaunchpadDrumSeq {
 	var launchpad;
 	var slotSelectionResponder, varSelectionResponder, noteSelectionResponder, noteOffSelectionResponder;
 	var modifierOnResponder, modifierOffResponder;
-	var pressedKeys, modifiers;
+	var pressedKeys, modifierState;
 	var <slots, <selectedSlot;
 
 	var stepLookUp, slotLookUp, varLookUp, modLookUp;
@@ -62,7 +73,7 @@ LaunchpadDrumSeq {
 		selectedSlot = 0;
 
 		pressedKeys = OrderedIdentitySet.new(2);
-		modifiers = Set(32);
+		modifierState = 0;
 
 		stepLookUp = [
 			81, 82, 83, 84, 85, 86, 87, 88,
@@ -86,25 +97,50 @@ LaunchpadDrumSeq {
 		];
 
 		modLookUp = [
-			80, 50
+			80, 70, 50
 		];
 
 		slotSelectionResponder = MIDIFunc({|vel, note|
-			if(modifiers.findMatch(\delete).notNil){
-				slotLookUp.do{|item, i| if(note == item){ this.clearSlot(i);} };
-			}{
-				slotLookUp.do{|item, i| if(note == item){ this.selectedSlot_(i);} };
+			var slotIndex;
+			slotLookUp.do{|item, i|
+				if(note == item){
+					slotIndex = i;
+				}
 			};
+
+			switch(modifierState,
+				0, { this.selectedSlot_(slotIndex) },
+				2, { this.muteSlot(slotIndex) },
+				4, { this.clearSlot(slotIndex) },
+			);
+
+			/*
+			if(modifiers.findMatch(\delete).notNil){
+				this.clearSlot(slotIndex)
+			}{
+				this.selectedSlot_(slotIndex)
+			};
+			*/
 		}, slotLookUp, nil, \noteOn);
 
 		varSelectionResponder = MIDIFunc({|vel, note|
 			varLookUp.do{|item, i| if(note == item){ this.selectVariation(i); } };
 		}, varLookUp, nil, \noteOn);
 
+		/*
+		modifier states:
+		0: no modifier pressed
+		1: shift modifier pressed -> select range
+		2: click modifier pressed -> mute slot
+		3: ?
+		4: delete modifier pressed -> delete slot sequence
+		*/
+
 		modifierOnResponder = MIDIFunc({|val, cc|
 			switch(cc,
-				80, {if(val > 0){ modifiers.add(\switch)}{ modifiers.remove(\switch) }; },
-				50, {if(val > 0){ modifiers.add(\delete)}{ modifiers.remove(\delete) }; },
+				80, { if(val > 0){ modifierState = 1 }{ modifierState = 0 } },
+				70, { if(val > 0){ modifierState = 2 }{ modifierState = 0 } },
+				50, { if(val > 0){ modifierState = 4 }{ modifierState = 0 } },
 			)
 		}, modLookUp, nil, \control);
 
@@ -112,11 +148,10 @@ LaunchpadDrumSeq {
 			var sl;
 			sl = slots[selectedSlot];
 
-			if(modifiers.findMatch(\switch).notNil){
-				this.changeNumSteps(note);
-			} {
-				this.createNote(note);
-			}
+			switch(modifierState,
+				0, { this.createNote(note) },
+				1, { this.changeNumSteps(note) },
+			);
 		}, stepLookUp, nil, \noteOn);
 
 		noteOffSelectionResponder = MIDIFunc({|vel, note|
@@ -187,10 +222,11 @@ LaunchpadDrumSeq {
 	}
 
 	selectedSlot_ { |slotIndex|
-		var prevLed, led, activeLed, sl;
+		var prevLed, wasMuted, led, activeLed, sl;
 		var drawArr = Array(200);
 
 		prevLed = slotLookUp[selectedSlot];
+		wasMuted = slots[selectedSlot].mute;
 		led = slotLookUp[slotIndex];
 		selectedSlot = slotIndex;
 
@@ -217,7 +253,8 @@ LaunchpadDrumSeq {
 		};
 
 		drawArr.add(prevLed);
-		drawArr.add(9);
+		if(wasMuted){ drawArr.add(118) }{ drawArr.add(9) };
+
 		drawArr.add(led);
 		drawArr.add(18);
 
@@ -243,7 +280,11 @@ LaunchpadDrumSeq {
 		this.draw(drawArr);
 	}
 
-	clearSlot {|slot|
+	addSlot {|index, variation, func|
+		slots[index].synthFuncs[variation] = func;
+	}
+
+	clearSlot {|slotIndex|
 		var prevLed, led, activeLed, sl;
 		var drawArr = Array(200);
 
@@ -253,7 +294,7 @@ LaunchpadDrumSeq {
 
 		activeLed = stepLookUp[sl.currentStep];
 
-		slots[slot].sequence = 0 ! 32;
+		slots[slotIndex].sequence = 0 ! 32;
 
 		sl.sequence.do{|item, i|
 			drawArr.add(stepLookUp[i]);
@@ -263,9 +304,30 @@ LaunchpadDrumSeq {
 		this.draw(drawArr);
 	}
 
-	addSlot {|index, variation, func|
-		slots[index].synthFuncs[variation] = func;
+	muteSlot{ |slotIndex|
+		var sl;
+		var drawArr = Array(200);
+
+		sl = slots[slotIndex];
+
+		drawArr.add(slotLookUp[slotIndex]);
+
+		if(sl.mute){
+			sl.mute = false;
+			if(slotIndex == selectedSlot){
+				drawArr.add(18);
+			}{
+				drawArr.add(9);
+			}
+		}{
+			sl.mute = true;
+			drawArr.add(118);
+		};
+
+
+		this.draw(drawArr);
 	}
+
 
 	nextStep {
 		var prevLed, selectedLed, activeLed, sl;
@@ -277,8 +339,7 @@ LaunchpadDrumSeq {
 			item.nextStep(i);
 			step = item.currentStep;
 			if(item.sequence[step] > 0){
-				item.synthFuncs[item.sequence[step] - 1].play
-
+				item.play(item.sequence[step] - 1)
 			}
 		};
 

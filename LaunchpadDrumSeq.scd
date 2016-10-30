@@ -1,17 +1,24 @@
 (
 TempoClock.default.tempo_(110/60);
 MIDIClient.init;
-~l = LaunchpadDrumSeq(4, 4);
-~bd = Buffer.read(s, "/Volumes/SSD 500 GB/Samples/DRITTE/SAMPLES/VINTAGE MACHINES/[KB6]_Roland_CR8000/cr8k01.wav");
-~sd = Buffer.read(s, "/Volumes/SSD 500 GB/Samples/DRITTE/SAMPLES/VINTAGE MACHINES/[KB6]_Roland_CR8000/cr8k07.wav");
-~hh = Buffer.read(s, "/Volumes/SSD 500 GB/Samples/DRITTE/SAMPLES/VINTAGE MACHINES/[KB6]_Roland_CR8000/cr8k14.wav");
+~l = LaunchpadDrumSeq(2, 2);
 )
 
 (
-~l.addSlot(0, 0,  { PlayBuf.ar(1, ~bd, doneAction: 2) ! 2 * 0.5; });
-~l.addSlot(0, 1, { PlayBuf.ar(1, ~sd, doneAction: 2) ! 2 * 0.3; });
-~l.addSlot(6, 0, { PlayBuf.ar(1, ~hh, doneAction: 2) ! 2 * 0.3; });
+SynthDef(\sinDr, {|out, freqC, freqM, mod=0.5, att=0.001, rel=0.2 amp=0.2|
+	var sig, env;
+	env = EnvGen.ar(Env.perc(att, rel), doneAction: 2);
+	sig = SinOsc.ar(freqC, SinOsc.ar(freqM, 0, mod * pi)) * amp ! 2;
+	Out.ar(out, sig*env);
+}).add;
+)
 
+~l.addSlot(0, 0, { Synth(\sinDr, [\freqC, 50, \freqM, 120, \mod, 2]) });
+~l.addSlot(0, 1, { Synth(\sinDr, [\freqC, 30, \freqM, 12, \mod, 1.6]) });
+~l.addSlot(1, 0, { Synth(\sinDr, [\freqC, 300, \freqM, 120, \mod, 1.6]) });
+~l.addSlot(2, 0, { Synth(\sinDr, [\freqC, 3000, \freqM, 3210, \mod, 3.6, \rel, 0.01]) });
+
+(
 Tdef(\seq, {
 	i = 0;
 	loop{

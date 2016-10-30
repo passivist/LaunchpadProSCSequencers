@@ -62,9 +62,9 @@ LaunchpadDrumSeq {
 	init {|inPort, outPort|
 		var drawArr = Array(200);
 		// connect to launchpad
-		MIDIIn.connect(0, inPort);
-		launchpad = MIDIOut(outPort);
-
+		//MIDIIn.connect(0, inPort);
+		//launchpad = MIDIOut(outPort);
+		launchpad = MIDIOut(5);
 		drawArrHeader = Int8Array[240,0,32,41,2,16,10];
 
 		i = 0;
@@ -368,9 +368,11 @@ LaunchpadDrumSeq {
 	}
 
 	draw {|arr|
-		launchpad.sysex(drawArrHeader);
-		launchpad.sysex(Int8Array.newFrom(arr));
-		launchpad.sysex(Int8Array[247]);
+		var full, body, end;
+		body = Int8Array.newFrom(arr);
+		end = Int8Array[247];
+		full = drawArrHeader ++ body ++ end;
+		launchpad.sysex(full);
 	}
 
 	reset {

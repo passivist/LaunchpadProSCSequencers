@@ -1,7 +1,8 @@
 (
 TempoClock.default.tempo_(110/60);
 MIDIClient.init;
-~l = LaunchpadDrumSeq(2, 2);
+MIDIIn.connectAll;
+~l = LaunchpadDrumSeq(4, 5);
 )
 
 (

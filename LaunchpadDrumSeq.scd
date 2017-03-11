@@ -1,9 +1,9 @@
-(
+
 TempoClock.default.tempo_(110/60);
 MIDIClient.init;
 MIDIIn.connectAll;
-~l = LaunchpadDrumSeq(4, 5);
-)
+~l = LaunchpadDrumSeq(4, 2);
+
 
 (
 SynthDef(\sinDr, {|out, freqC, freqM, mod=0.5, att=0.001, rel=0.2 amp=0.2|

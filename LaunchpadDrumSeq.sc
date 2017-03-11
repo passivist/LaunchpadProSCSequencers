@@ -62,9 +62,9 @@ LaunchpadDrumSeq {
 	init {|inPort, outPort|
 		var drawArr = Array(200);
 		// connect to launchpad
-		//MIDIIn.connect(0, inPort);
-		//launchpad = MIDIOut(outPort);
-		launchpad = MIDIOut(5);
+		MIDIIn.connect(0, inPort);
+		launchpad = MIDIOut(outPort);
+
 		drawArrHeader = Int8Array[240,0,32,41,2,16,10];
 
 		i = 0;

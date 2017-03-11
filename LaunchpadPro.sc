@@ -16,6 +16,8 @@ LaunchpadPro {
 			Error("MIDIClient not initialized. Must call MIDIClient.init before creating a LaunchpadPro Object").throw
 		};
 
+		// MIDIIn.connectAll(false);
+
 		MIDIClient.sources.do{ |item|
 			Platform.case(
 				\osx,     {
@@ -36,7 +38,7 @@ LaunchpadPro {
 					if(item.device == "Launchpad Pro" && item.name == "Standalone Port"){ outPort = MIDIOut(i) };
 				},
 				\linux,   {
-					if(item.name == "Launchpad Pro MIDI 2"){ outPort = MIDIOut(i) };
+					if(item.name == "Launchpad Pro MIDI 2"){ outPort = MIDIOut(0); outPort.connect(i) };
 				},
 				\windows, {
 					if(item.name == "Win Name"){ outPort = MIDIOut(i) };
@@ -47,12 +49,10 @@ LaunchpadPro {
 		if(launchpadExists.not){
 			Error("No LaunchpadPro connected! Connect your hardware before running creating the LaunchpadPro Object").throw;
 		};
-
-		MIDIIn.connectAll(false);
 	}
 
 	// LED syntax: (240,0,32,41,2,16,10,<LED>,<Colour>,247)
-	drawLeds { |leds, colours|
+	drawLed { |leds, colours|
 		var header = Int8Array[240,0,32,41,2,16,10];
 		var end = Int8Array[247];
 		var body;
@@ -93,12 +93,78 @@ LaunchpadPro {
 	}
 
 	// Row syntax: (240,0,32,41,2,16,13,<Row>,<Colour>,247)
+	drawRow {|row, colours|
+		var header = Int8Array[240,0,32,41,2,16,13];
+		var end = Int8Array[247];
+		var body;
+
+		row = row.asArray;
+		colours = colours.asArray;
+
+		if(colours.size > 10){
+			"Colours can't exeed 10 values: everything more than that will not be processed by the LaunchpadPro".warn
+		};
+
+		body = Int8Array.newFrom( row ++ colours );
+
+		outPort.sysex(header ++ body ++ end);
+	}
 
 	// All syntax: (240,0,32,41,2,16,14,<Colour>,247)
+	drawAll { |colour|
+		var header = Int8Array[240,0,32,41,2,16,14];
+		var end = Int8Array[247];
+		var body;
 
+		body = Int8Array.newFrom( colour.asArray );
+
+		outPort.sysex(header ++ body ++ end);
+	}
 	// Flash LEDs: (240,0,32,41,2,16,35, <LED>, <Colour>, 247)
+	flashLed { |leds, colours|
+		var header = Int8Array[240,0,32,41,2,16,35];
+		var end = Int8Array[247];
+		var body;
+
+		leds = leds.asArray;
+		colours = colours.asArray;
+
+		if((leds.size > 96) || (colours.size > 96) ){
+			"LED Colour Pairs can't exeed 97: everything more than that will not be processed by the LaunchpadPro".warn
+		};
+
+		// make colours the size of leds by repeating
+		if(colours.size < leds.size){
+			colours = colours.wrapExtend(leds.size)
+		};
+
+		body = Int8Array.newFrom( lace([leds, colours]) );
+
+		outPort.sysex(header ++ body ++ end);
+	}
 
 	// Pulse LEDs: (240, 0,32,41,2,16,40,<LED>, <Colour>, 247)
+	pulseLed { |leds, colours|
+		var header = Int8Array[240,0,32,41,2,16,35];
+		var end = Int8Array[247];
+		var body;
+
+		leds = leds.asArray;
+		colours = colours.asArray;
+
+		if((leds.size > 96) || (colours.size > 96) ){
+			"LED Colour Pairs can't exeed 97: everything more than that will not be processed by the LaunchpadPro".warn
+		};
+
+		// make colours the size of leds by repeating
+		if(colours.size < leds.size){
+			colours = colours.wrapExtend(leds.size)
+		};
+
+		body = Int8Array.newFrom( lace([leds, colours]) );
+
+		outPort.sysex(header ++ body ++ end);
+	}
 
 	// LED RGB: (240, 0, 32, 41, 2, 16, 11, <LED>, <Red>, <Green>, <Blue>, 247)
 

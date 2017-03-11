@@ -1,7 +1,11 @@
+// This is the setup you have to do before using the class:
+
+(
 MIDIClient.init;
 ~l = LaunchpadPro();
+)
 
-// *****************************************************************
+// ******************************EXAMPLES**************************************
 ~l.outPort
 ~l.resetLeds;
 
@@ -15,6 +19,14 @@ MIDIClient.init;
 
 ~l.flashLed(15, 3);
 ~l.flashLed((0 .. 95), Array.fill(96, {128.rand}));
+
+~l.pulseLed(16, 3);
+
+~l.drawLedRGB(16, 60, 7, 6)
+
+~l.drawGridRGB(1, 60 ! 100, 7 ! 29, 6 ! 30)
+~l.drawGridRGB(1, Array.fill(64, {63.rand}), Array.fill(64, {63.rand}), Array.fill(64, {63.rand}))
+
 
 (
 fork{
@@ -53,5 +65,13 @@ fork{
 };
 )
 
+(
+fork{
+	128.do{ |item, i|
+		~l.drawGridRGB(1, Array.fill(64, {63.rand}), Array.fill(64, {63.rand}), Array.fill(64, {63.rand}));
+		(1/24).wait;
+	}
+};
+)
+
 ~l.resetLeds
-~l.drawLed(92, 3);

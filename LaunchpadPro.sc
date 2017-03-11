@@ -16,8 +16,6 @@ LaunchpadPro {
 			Error("MIDIClient not initialized. Must call MIDIClient.init before creating a LaunchpadPro Object").throw
 		};
 
-		// MIDIIn.connectAll(false);
-
 		MIDIClient.sources.do{ |item|
 			Platform.case(
 				\osx,     {
@@ -145,7 +143,7 @@ LaunchpadPro {
 
 	// Pulse LEDs: (240, 0,32,41,2,16,40,<LED>, <Colour>, 247)
 	pulseLed { |leds, colours|
-		var header = Int8Array[240,0,32,41,2,16,35];
+		var header = Int8Array[240,0,32,41,2,16,40];
 		var end = Int8Array[247];
 		var body;
 
@@ -167,12 +165,52 @@ LaunchpadPro {
 	}
 
 	// LED RGB: (240, 0, 32, 41, 2, 16, 11, <LED>, <Red>, <Green>, <Blue>, 247)
+	drawLedRGB { |leds, r, g, b|
+		var header = Int8Array[240,0,32,41,2,16,11];
+		var end = Int8Array[247];
+		var body;
+
+		leds = leds.asArray;
+		r = r.asArray; g = g.asArray; b = b.asArray;
+
+		if((leds.size > 77) ){
+			"LED RGB tuples can't exeed 78: everything more than that will not be processed by the LaunchpadPro".warn
+		};
+
+		// make colours the size of leds by repeating
+		r = r.wrapExtend(leds.size);
+		g = g.wrapExtend(leds.size);
+		b = b.wrapExtend(leds.size);
+
+
+		body = Int8Array.newFrom( lace([leds, r, g, b]) );
+
+		outPort.sysex(header ++ body ++ end);
+	}
 
 	// Grid RGB: (240, 0, 32, 41, 2, 16, 15, <Grid Type>, <Red>, <Green>, <Blue>, 247)
 	// Grid Type is 0 for 10x10 Grid or 1 for 8x8 inner grid
+	drawGridRGB { |type, r, g, b|
+		var header = Int8Array[240,0,32,41,2,16,15];
+		var end = Int8Array[247];
+		var body;
 
+		var rgbSizes = [r.size, g.size, b.size];
+		var rgb = [];
 
+		rgbSizes = rgbSizes.sort.reverse.postln;
 
+		type = type.asArray;
+		r = r.asArray; g = g.asArray; b = b.asArray;
+
+		r = r.wrapExtend(rgbSizes[0]);
+		g = g.wrapExtend(rgbSizes[0]);
+		b = b.wrapExtend(rgbSizes[0]);
+
+		body = Int8Array.newFrom( type ++ lace([r, g, b]) );
+
+		outPort.sysex(header ++ body ++ end);
+	}
 
 	resetLeds {
 		outPort.sysex(Int8Array[ 240,0,32,41,2,16,14,0,247]);

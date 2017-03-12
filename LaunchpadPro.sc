@@ -1,9 +1,27 @@
+LaunchpadProMode {
+	var <modeID, <launchpad, <>isActive;
+	var inputResponderFunc;
+
+	*new { |modeID, launchpad, isActive = false|
+		^super.newCopyArgs(modeID, launchpad, isActive);
+	}
+
+	// called from LaunchpadPro and should be implemented in all inheriting modes to
+	// access the MIDI
+	inputCallback {|button, vel|
+		["Mode: ", button, vel].postln;
+		inputResponderFunc.value;
+	}
+}
+
 /*
 * LaunchpadPro a class for handling interfacing with the LaunchpadPro hardware.
 */
-
 LaunchpadPro {
 	var <inUID, <outPort;
+	var <>modes;
+	var innerLookup, outerLookup;
+	var innerButtonResponder, outerButtonOnResponder;
 
 	*new {
 		^super.new.init()
@@ -11,6 +29,25 @@ LaunchpadPro {
 
 	init {
 		var launchpadExists = false;
+
+		innerLookup = [
+			// left to right top to bottom
+			81, 82, 83, 84, 85, 86, 87, 88,
+			71, 72, 73, 74, 75, 76, 77, 78,
+			61, 62, 63, 64, 65, 66, 67, 68,
+			51, 52, 53, 54, 55, 56, 57, 58,
+			41, 42, 43, 44, 45, 46, 47, 48,
+			31, 32, 33, 34, 35, 36, 37, 38,
+			21, 22, 23, 24, 25, 26, 27, 28,
+			11, 12, 13, 14, 15, 16, 17, 18
+		];
+
+		outerLookup = [
+			91, 92, 93, 94, 95, 96, 97, 98, // top row left to right
+			80, 70, 60, 50, 40, 30, 20, 10,	// left column top down
+			89, 79, 69, 59, 49, 39, 29, 19, // right column top down
+			1,   2,  3,  4,  5,  6,  7,  8, // bottom row left to right
+		];
 
 		if(MIDIClient.initialized.not){
 			Error("MIDIClient not initialized. Must call MIDIClient.init before creating a LaunchpadPro Object").throw
@@ -47,8 +84,54 @@ LaunchpadPro {
 		if(launchpadExists.not){
 			Error("No LaunchpadPro connected! Connect your hardware before running creating the LaunchpadPro Object").throw;
 		};
+
+		MIDIIn.connectAll();
+
+		modes = Array.fill(4, {|i| LaunchpadProMode.new(i, this, false) });
+
+		/** MIDI INPUT HANDLING */
+		MIDIFunc.noteOn({ |vel, note|
+			var button;
+
+			["LPPro", note, vel].postln;
+
+			innerLookup.do{|item, i|
+				if(note == item){button = i};
+			};
+
+			modes.do{|mode|
+				if(mode.isActive){
+					mode.inputCallback(button, vel);
+				}
+			}
+		}, innerLookup, nil, inUID);
+
+		MIDIFunc.noteOff({ |vel, note|
+			var button;
+
+			["LPPro", note, vel].postln;
+
+			innerLookup.do{|item, i|
+				if(note == item){button = i};
+			};
+
+			modes.do{|mode|
+				if(mode.isActive){
+					mode.inputCallback(button, vel);
+				}
+			}
+		}, innerLookup, nil, inUID);
+
 	}
 
+	/** MODE HANDLING */
+	registerMode { |mode|
+		if(mode.isKindOf("LaunchpadProMode")){ Error.throw("Must pass in a LaunchpadPro Mode").throw };
+
+		modes[mode.modeID] = mode;
+	}
+
+	/** DRAWING METHODS */
 	// LED syntax: (240,0,32,41,2,16,10,<LED>,<Colour>,247)
 	drawLed { |leds, colours|
 		var header = Int8Array[240,0,32,41,2,16,10];

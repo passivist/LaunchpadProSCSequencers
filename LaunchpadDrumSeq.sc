@@ -43,9 +43,14 @@ LaunchpadDrumSeqSlot {
 	}
 }
 
+LaunchpadSimpleDrumSeq : LaunchpadProMode {
+
+}
+
+/*
 LaunchpadDrumSeq {
 	var launchpad;
-	var slotSelectionResponder, varSelectionResponder, noteSelectionResponder, noteOffSelectionResponder;
+	var slotSelectionResponder, varSelectionResponder, noteSelectionOnResponder, noteSelectionOffResponder;
 	var modifierOnResponder, modifierOffResponder;
 	var pressedKeys, modifierState;
 	var <slots, <selectedSlot;
@@ -55,17 +60,14 @@ LaunchpadDrumSeq {
 	var drawArrHeader;
 	var i;
 
-	*new { |inPort, outPort|
-		^super.new.init(inPort, outPort)
+	*new { |launchpad|
+		^super.new.init(launchpad)
 	}
 
-	init {|inPort, outPort|
-		var drawArr = Array(200);
-		// connect to launchpad
-		MIDIIn.connect(0, inPort);
-		launchpad = MIDIOut(outPort);
+	init {|lPad|
 
-		drawArrHeader = Int8Array[240,0,32,41,2,16,10];
+		// connect to launchpad
+		launchpad = lPad;
 
 		i = 0;
 
@@ -75,6 +77,7 @@ LaunchpadDrumSeq {
 		pressedKeys = OrderedIdentitySet.new(2);
 		modifierState = 0;
 
+		/** LOOKUP TABLES */
 		stepLookUp = [
 			81, 82, 83, 84, 85, 86, 87, 88,
 			71, 72, 73, 74, 75, 76, 77, 78,
@@ -100,6 +103,9 @@ LaunchpadDrumSeq {
 			80, 70, 50
 		];
 
+		/** MIDI INPUT RESPONDER FUNCTIONS */
+		// TODO: move each to their own method. This way the launchpad doesn't have to
+		// be connected and the code becomes much more readable
 		slotSelectionResponder = MIDIFunc({|vel, note|
 			var slotIndex;
 			slotLookUp.do{|item, i|
@@ -113,19 +119,11 @@ LaunchpadDrumSeq {
 				2, { this.muteSlot(slotIndex) },
 				4, { this.clearSlot(slotIndex) },
 			);
-
-			/*
-			if(modifiers.findMatch(\delete).notNil){
-				this.clearSlot(slotIndex)
-			}{
-				this.selectedSlot_(slotIndex)
-			};
-			*/
-		}, slotLookUp, nil, \noteOn);
+		}, slotLookUp, nil, \noteOn, launchpad.inUID);
 
 		varSelectionResponder = MIDIFunc({|vel, note|
 			varLookUp.do{|item, i| if(note == item){ this.selectVariation(i); } };
-		}, varLookUp, nil, \noteOn);
+		}, varLookUp, nil, \noteOn, launchpad.inUID);
 
 		/*
 		modifier states:
@@ -135,16 +133,16 @@ LaunchpadDrumSeq {
 		3: ?
 		4: delete modifier pressed -> delete slot sequence
 		*/
-
+		// TODO: Make modifiers Symbols or strings for better readability
 		modifierOnResponder = MIDIFunc({|val, cc|
 			switch(cc,
 				80, { if(val > 0){ modifierState = 1 }{ modifierState = 0 } },
 				70, { if(val > 0){ modifierState = 2 }{ modifierState = 0 } },
 				50, { if(val > 0){ modifierState = 4 }{ modifierState = 0 } },
 			)
-		}, modLookUp, nil, \control);
+		}, modLookUp, nil, \control, launchpad.inUID);
 
-		noteSelectionResponder = MIDIFunc({|vel, note|
+		noteSelectionOnResponder = MIDIFunc({|vel, note|
 			var sl;
 			sl = slots[selectedSlot];
 
@@ -152,28 +150,19 @@ LaunchpadDrumSeq {
 				0, { this.createNote(note) },
 				1, { this.changeNumSteps(note) },
 			);
-		}, stepLookUp, nil, \noteOn);
+		}, stepLookUp, nil, \noteOn, launchpad.inUID);
 
-		noteOffSelectionResponder = MIDIFunc({|vel, note|
+		noteSelectionOffResponder = MIDIFunc({|vel, note|
 			stepLookUp.do{|item, i|
 				if(note == item){
 					pressedKeys.remove(i);
 				};
 			}
-		}, stepLookUp, nil, \noteOff);
+		}, stepLookUp, nil, \noteOff, launchpad.inUID);
+	}
 
+	selectSlot {
 
-		slotLookUp.do{|item|
-			drawArr.add(item);
-			drawArr.add(9);
-		};
-
-		varLookUp.do{|item|
-			drawArr.add(item);
-			drawArr.add(item);
-		};
-
-		this.draw(drawArr);
 	}
 
 	changeNumSteps {|note|
@@ -393,3 +382,4 @@ LaunchpadDrumSeq {
 
 	}
 }
+*/

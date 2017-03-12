@@ -3,7 +3,19 @@
 (
 MIDIClient.init;
 ~l = LaunchpadPro();
+~mode= LaunchpadProMode(0, ~l, true);
+~l.registerMode(~mode);
 )
+
+~l.inUID;
+~l.modes[0].isActive;
+
+
+
+~mode.launchpad
+~mode.isActive
+
+1.as(Int8Array)
 
 // ******************************EXAMPLES**************************************
 ~l.outPort

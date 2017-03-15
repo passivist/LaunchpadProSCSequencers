@@ -3,19 +3,26 @@
 (
 MIDIClient.init;
 ~l = LaunchpadPro();
-~mode= LaunchpadProMode(0, ~l, true);
+~mode = LaunchpadDrumSeq(1, ~l);
 ~l.registerMode(~mode);
 )
 
-~l.inUID;
-~l.modes[0].isActive;
+
+~mode = ~mode.drumInit(1, ~l)
+~mode.isKindOf(LaunchpadProMode)
+
+~m = LaunchpadProMode(1, ~l);
+~m.modeID;
 
 
+(
+~l.modes.do{|item, i|
+	item.isActive.postln;
+};
+)
 
-~mode.launchpad
-~mode.isActive
-
-1.as(Int8Array)
+a = Set[]
+a.add('dict')
 
 // ******************************EXAMPLES**************************************
 ~l.outPort

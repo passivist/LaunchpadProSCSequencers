@@ -1,26 +1,11 @@
-LaunchpadProMode {
-	var <modeID, <launchpad, <>isActive;
-	var inputResponderFunc;
-
-	*new { |modeID, launchpad, isActive = false|
-		^super.newCopyArgs(modeID, launchpad, isActive);
-	}
-
-	// called from LaunchpadPro and should be implemented in all inheriting modes to
-	// access the MIDI
-	inputCallback {|button, vel|
-		["Mode: ", button, vel].postln;
-		inputResponderFunc.value;
-	}
-}
-
 /*
 * LaunchpadPro a class for handling interfacing with the LaunchpadPro hardware.
 */
+
 LaunchpadPro {
 	var <inUID, <outPort;
 	var <>modes;
-	var innerLookup, outerLookup;
+	var innerLookup, outerLookup, modeLookup;
 	var innerButtonResponder, outerButtonOnResponder;
 
 	*new {
@@ -43,16 +28,22 @@ LaunchpadPro {
 		];
 
 		outerLookup = [
-			91, 92, 93, 94, 95, 96, 97, 98, // top row left to right
+			91, 92, 93, 94, 				// top row left to right (the last 4 buttons here are reserved for modes)
 			80, 70, 60, 50, 40, 30, 20, 10,	// left column top down
 			89, 79, 69, 59, 49, 39, 29, 19, // right column top down
 			1,   2,  3,  4,  5,  6,  7,  8, // bottom row left to right
 		];
 
+		modeLookup = [
+			95, 96, 97, 98
+		];
+
+		/** STARTUP */
 		if(MIDIClient.initialized.not){
 			Error("MIDIClient not initialized. Must call MIDIClient.init before creating a LaunchpadPro Object").throw
 		};
 
+		// search for the LaunchpadPro Hardware which has a different name on each platform
 		MIDIClient.sources.do{ |item|
 			Platform.case(
 				\osx,     {
@@ -87,13 +78,13 @@ LaunchpadPro {
 
 		MIDIIn.connectAll();
 
+		// create initial empty modes
 		modes = Array.fill(4, {|i| LaunchpadProMode.new(i, this, false) });
 
 		/** MIDI INPUT HANDLING */
+		/* inner grid: */
 		MIDIFunc.noteOn({ |vel, note|
 			var button;
-
-			["LPPro", note, vel].postln;
 
 			innerLookup.do{|item, i|
 				if(note == item){button = i};
@@ -101,7 +92,7 @@ LaunchpadPro {
 
 			modes.do{|mode|
 				if(mode.isActive){
-					mode.inputCallback(button, vel);
+					mode.inputCallback(button, vel, 'inner');
 				}
 			}
 		}, innerLookup, nil, inUID);
@@ -109,26 +100,77 @@ LaunchpadPro {
 		MIDIFunc.noteOff({ |vel, note|
 			var button;
 
-			["LPPro", note, vel].postln;
-
 			innerLookup.do{|item, i|
-				if(note == item){button = i};
+				if(note == item){button = i}
 			};
 
 			modes.do{|mode|
 				if(mode.isActive){
-					mode.inputCallback(button, vel);
+					mode.inputCallback(button, vel, 'inner')
 				}
 			}
 		}, innerLookup, nil, inUID);
+
+		/* outer buttons */
+		MIDIFunc.cc({|val, cc|
+			var button;
+
+			outerLookup.do{|item, i|
+				if(cc == item){button = i}
+			};
+
+			modes.do{|mode|
+				if(mode.isActive){
+					mode.inputCallback(button, val, 'outer')
+				}
+			}
+		}, outerLookup, nil, inUID);
+
+		/* mode switching */
+		MIDIFunc.cc({|val, cc|
+			var modeToActivate;
+
+			modeLookup.do{|item, i|
+				if(cc == item){ modeToActivate = i }
+			};
+
+			modes.do{|mode, i|
+				if(i == modeToActivate){
+					mode.isActive_(true)
+				} {
+					mode.isActive_(false)
+				}
+			};
+
+			this.updateLeds;
+		}, modeLookup, nil, inUID);
+
+		// finally reset all the leds on the launchpad
+		this.resetLeds;
 
 	}
 
 	/** MODE HANDLING */
 	registerMode { |mode|
-		if(mode.isKindOf("LaunchpadProMode")){ Error.throw("Must pass in a LaunchpadPro Mode").throw };
+		/* Errors */
+		if(mode.modeID.isNil){ Error("modeID is nil! Don't know where to put mode").throw };
+		if((mode.modeID > 3) || (mode.modeID < 0 )){ Error("modeID out of bounds error").throw};
 
 		modes[mode.modeID] = mode;
+
+		this.updateLeds;
+	}
+
+	/** DRAWING INTERNAL STATE */
+	/* I recommend calling this whenever changing the internal state of the LaunchpadPro Object or one of the modes */
+	updateLeds {|stateArr|
+		this.resetLeds;
+
+		modes.do{|mode, i|
+			if(mode.isActive){
+				this.drawLed(modeLookup[i], 13)
+			}
+		}
 	}
 
 	/** DRAWING METHODS */
@@ -299,3 +341,19 @@ LaunchpadPro {
 		outPort.sysex(Int8Array[ 240,0,32,41,2,16,14,0,247]);
 	}
 }
+
+
+LaunchpadProMode {
+	var <modeID, <launchpad, <>isActive;
+
+	*new { |modeID, launchpad, isActive = false|
+		^super.newCopyArgs(modeID, launchpad, isActive)
+	}
+
+	// called from LaunchpadPro and should be implemented in all inheriting modes to
+	// access the MIDI
+	inputCallback {|button, val, type|
+
+	}
+}
+

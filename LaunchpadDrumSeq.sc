@@ -43,8 +43,66 @@ LaunchpadDrumSeqSlot {
 	}
 }
 
-LaunchpadSimpleDrumSeq : LaunchpadProMode {
+LaunchpadDrumSeq {
+	var <modeID, <launchpad, <>isActive;
 
+	var curStep;
+	var <slots, <selectedSlot;
+	var slotLookup;
+	var modifier;
+	var internalState;
+
+	*new { |modeID, launchpad, isActive = false|
+		^super.new.init(modeID, launchpad, isActive)
+	}
+
+	init {|id, lPad, active|
+		modeID = id;
+		launchpad = lPad;
+		isActive = active;
+
+		slotLookup = [
+			32, 33, 34, 35,
+			40, 41, 42, 43,
+			48, 49, 50, 51,
+			56, 57, 58, 59
+		];
+
+		modifier = Set[];
+	}
+
+	/** INPUT HANDLING */
+	inputCallback { |button, val, type|
+		// [button, val, type].postln;
+
+		if(val > 0){
+			if(type == 'inner'){
+				if(button < 32){
+					this.noteSelection(button)
+				}
+			};
+		};
+
+		if(type == 'outer'){
+			switch(button,
+				4, { if(val > 0){ modifier.add('length'); modifier.postln; }{ modifier.remove('length') } },
+				5, { if(val > 0){ modifier.add('delete') }{ modifier.remove('delete') } },
+				6, { if(val > 0){ modifier.add('mute') }{ modifier.remove('mute') } },
+			);
+			// modifier.postln;
+		};
+
+
+		launchpad.updateLeds(internalState);
+	}
+
+	noteSelection { |step|
+
+	}
+
+	updateInternalState {
+
+	}
 }
 
 /*

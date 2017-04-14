@@ -1,15 +1,16 @@
 // This is the setup you have to do before using the class:
 
 (
-MIDIClient.init;
+//MIDIClient.init;
 ~l = LaunchpadPro();
 ~mode = LaunchpadDrumSeq(1, ~l);
 ~l.registerMode(~mode);
 )
 
 
-~mode = ~mode.drumInit(1, ~l)
-~mode.isKindOf(LaunchpadProMode)
+~mode = ~mode.drumInit(1, ~l);
+~mode.modeID;
+~mode.isActive
 
 ~m = LaunchpadProMode(1, ~l);
 ~m.modeID;

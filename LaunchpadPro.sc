@@ -1,5 +1,5 @@
 /*
-* LaunchpadPro a class for handling interfacing with the LaunchpadPro hardware.
+	* LaunchpadPro a class for handling interfacing with the LaunchpadPro hardware.
 */
 
 LaunchpadPro {
@@ -39,9 +39,14 @@ LaunchpadPro {
 		];
 
 		/** STARTUP */
-		if(MIDIClient.initialized.not){
+		/*
+			if(MIDIClient.initialized.not){
 			Error("MIDIClient not initialized. Must call MIDIClient.init before creating a LaunchpadPro Object").throw
-		};
+			};
+		*/
+		
+		// It's important that this comes before MIDIOut.connect because it will delete all prior connections
+		MIDIIn.connectAll();
 
 		// search for the LaunchpadPro Hardware which has a different name on each platform
 		MIDIClient.sources.do{ |item|
@@ -64,7 +69,7 @@ LaunchpadPro {
 					if(item.device == "Launchpad Pro" && item.name == "Standalone Port"){ outPort = MIDIOut(i) };
 				},
 				\linux,   {
-					if(item.name == "Launchpad Pro MIDI 2"){ outPort = MIDIOut(0); outPort.connect(i) };
+					if(item.name == "Launchpad Pro MIDI 2"){ outPort = MIDIOut(0); outPort.connect(i); };
 				},
 				\windows, {
 					if(item.name == "Win Name"){ outPort = MIDIOut(i) };
@@ -75,8 +80,6 @@ LaunchpadPro {
 		if(launchpadExists.not){
 			Error("No LaunchpadPro connected! Connect your hardware before running creating the LaunchpadPro Object").throw;
 		};
-
-		MIDIIn.connectAll();
 
 		// create initial empty modes
 		modes = Array.fill(4, {|i| LaunchpadProMode.new(i, this, false) });
@@ -129,20 +132,24 @@ LaunchpadPro {
 		/* mode switching */
 		MIDIFunc.cc({|val, cc|
 			var modeToActivate;
+			var stateArr;
 
-			modeLookup.do{|item, i|
-				if(cc == item){ modeToActivate = i }
-			};
+			if(val > 0){ // only respond to "note-on" even though these are cc values
+				modeLookup.do{|item, i|
+					if(cc == item){ modeToActivate = i }
+				};
 
-			modes.do{|mode, i|
-				if(i == modeToActivate){
-					mode.isActive_(true)
-				} {
-					mode.isActive_(false)
-				}
-			};
+				modes.do{|mode, i|
+					if(i == modeToActivate){
+						mode.isActive_(true);
+						stateArr = mode.internalState;
+					} {
+						mode.isActive_(false)
+					}
+				};
 
-			this.updateLeds;
+				this.updateLeds(stateArr);
+			}
 		}, modeLookup, nil, inUID);
 
 		// finally reset all the leds on the launchpad
@@ -162,14 +169,35 @@ LaunchpadPro {
 	}
 
 	/** DRAWING INTERNAL STATE */
-	/* I recommend calling this whenever changing the internal state of the LaunchpadPro Object or one of the modes */
+	/*
+		I recommend calling this whenever changing the internal state of the LaunchpadPro Object or one of the modes 
+		I opted to format the stateArr thus for usability:
+		[[innnerGrid [LED, Colour] pairs], [outerGrid [LED, Colour] Pairs] ]
+	*/
 	updateLeds {|stateArr|
-		this.resetLeds;
+		var innerLeds, outerLeds;
+		innerLeds = [];
+		outerLeds = [];
+		
+		//this.resetLeds;
 
 		modes.do{|mode, i|
 			if(mode.isActive){
 				this.drawLed(modeLookup[i], 13)
+			}{
+				this.drawLed(modeLookup[i], 0)
 			}
+		};
+		
+		if(stateArr.notNil){
+			// prepare innerLeds for drawing		
+			innerLeds = stateArr[0].flop;
+			
+			innerLeds[0] = innerLeds[0].collect{ |item, i|
+				innerLookup[item];
+			};
+
+			this.drawLed(innerLeds[0], innerLeds[1]);
 		}
 	}
 
@@ -345,11 +373,19 @@ LaunchpadPro {
 
 LaunchpadProMode {
 	var <modeID, <launchpad, <>isActive;
-
+	var <internalState;
+	
 	*new { |modeID, launchpad, isActive = false|
-		^super.newCopyArgs(modeID, launchpad, isActive)
+		^super.new.init(modeID, launchpad, isActive)
 	}
 
+	init { |id, lPad, active|
+		modeID = id;
+		launchpad = lPad;
+		isActive = active;
+		internalState = nil;
+	}
+	
 	// called from LaunchpadPro and should be implemented in all inheriting modes to
 	// access the MIDI
 	inputCallback {|button, val, type|

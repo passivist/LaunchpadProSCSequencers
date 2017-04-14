@@ -1,16 +1,15 @@
 LaunchpadDrumSeqSlot {
-	var <>currentStep, <>prevStep, i;
+	var <>currentStep, <>prevStep;
 	var <>numSteps, <>offset;
-	var <>sequence, <>synthFuncs, synth;
+	var <>sequence, <>synthFunc, synth;
 	var <>selectedVar;
 	var <>mute;
 
-	*new {
-		^super.new.init()
+	*new { |func|
+		^super.new.init(func)
 	}
 
-	init {
-		i = 0;
+	init { |func|
 		currentStep = 0;
 		prevStep = 0;
 		numSteps = 32;
@@ -18,39 +17,55 @@ LaunchpadDrumSeqSlot {
 		sequence = 0 ! 32;
 		selectedVar = 0;
 
+		synthFunc = func;
+		
 		mute = false;
-
-		synthFuncs = Array.newClear(32);
 	}
 
-	nextStep { |i|
+	nextStep { |i|	
 		i = i % numSteps;
+
+		this.play(i);
+		
 		prevStep = currentStep;
+
 		if(numSteps.isPositive){
 			currentStep = i + offset;
 		}{
 			currentStep = (i + numSteps).abs + offset;
-		}
+		};
 	}
 
 	play { |i|
-		if(synth.isPlaying){ synth.free };
-
 		if(mute.not){
-			synth = synthFuncs[i].value;
-			NodeWatcher.register(synth);
+			if(sequence[i] > 0){
+				if(synth.isPlaying){ synth.release };
+				synth = synthFunc.play;
+				NodeWatcher.register(synth);	
+			};
 		};
+	}
+
+	reset {
+		this.init(synthFunc)
 	}
 }
 
 LaunchpadDrumSeq {
 	var <modeID, <launchpad, <>isActive;
 
-	var curStep;
 	var <slots, <selectedSlot;
 	var slotLookup;
 	var modifier;
-	var internalState;
+
+	var count;
+
+	/*
+		this is an array holding the state of all the values relevant for drawing
+		so active steps, modifiers, slots etc. It is constructed at a sensible point
+		and then passed to the LaunchpadPro object
+	*/
+	var <internalState;
 
 	*new { |modeID, launchpad, isActive = false|
 		^super.new.init(modeID, launchpad, isActive)
@@ -61,383 +76,196 @@ LaunchpadDrumSeq {
 		launchpad = lPad;
 		isActive = active;
 
-		slotLookup = [
-			32, 33, 34, 35,
-			40, 41, 42, 43,
+		slotLookup =  [
+			56, 57, 58, 59,
 			48, 49, 50, 51,
-			56, 57, 58, 59
+			40, 41, 42, 43,
+			32, 33, 34, 35
 		];
 
 		modifier = Set[];
+
+		count = 0;
+
+		// initialize slots
+		slots = nil ! 16;
+		
+		// initialize a dummy slot
+		slots[0] = LaunchpadDrumSeqSlot({});
+		selectedSlot = slots[0];
+
+		this.updateInternalState;
 	}
 
 	/** INPUT HANDLING */
 	inputCallback { |button, val, type|
 		// [button, val, type].postln;
-
+		
 		if(val > 0){
 			if(type == 'inner'){
 				if(button < 32){
 					this.noteSelection(button)
 				}
 			};
+
+			slotLookup.do{|item, i|
+				if(item == button){
+					this.setActiveSlot(i)
+				}
+			};
 		};
 
 		if(type == 'outer'){
 			switch(button,
-				4, { if(val > 0){ modifier.add('length'); modifier.postln; }{ modifier.remove('length') } },
-				5, { if(val > 0){ modifier.add('delete') }{ modifier.remove('delete') } },
-				6, { if(val > 0){ modifier.add('mute') }{ modifier.remove('mute') } },
+				4, { if(val > 0){ modifier.add('length') }{ modifier.remove('length') } },
+				7, { if(val > 0){ modifier.add('delete') }{ modifier.remove('delete') } },
+				22, { if(val > 0){ modifier.add('mute'  ) }{ modifier.remove('mute'  ) } },
 			);
 			// modifier.postln;
 		};
-
-
-		launchpad.updateLeds(internalState);
 	}
 
-	noteSelection { |step|
+	// handle slots
+	registerSlot {|id, func|
+		slots[id] = LaunchpadDrumSeqSlot(func);
 
+		this.updateInternalState;
 	}
 
-	updateInternalState {
-
-	}
-}
-
-/*
-LaunchpadDrumSeq {
-	var launchpad;
-	var slotSelectionResponder, varSelectionResponder, noteSelectionOnResponder, noteSelectionOffResponder;
-	var modifierOnResponder, modifierOffResponder;
-	var pressedKeys, modifierState;
-	var <slots, <selectedSlot;
-
-	var stepLookUp, slotLookUp, varLookUp, modLookUp;
-
-	var drawArrHeader;
-	var i;
-
-	*new { |launchpad|
-		^super.new.init(launchpad)
-	}
-
-	init {|lPad|
-
-		// connect to launchpad
-		launchpad = lPad;
-
-		i = 0;
-
-		slots = Array.fill(16, { LaunchpadDrumSeqSlot.new() });
-		selectedSlot = 0;
-
-		pressedKeys = OrderedIdentitySet.new(2);
-		modifierState = 0;
-
-		/** LOOKUP TABLES */
-		stepLookUp = [
-			81, 82, 83, 84, 85, 86, 87, 88,
-			71, 72, 73, 74, 75, 76, 77, 78,
-			61, 62, 63, 64, 65, 66, 67, 68,
-			51, 52, 53, 54, 55, 56, 57, 58,
-		];
-
-		slotLookUp = [
-			11, 12, 13, 14,
-			21, 22, 23, 24,
-			31, 32, 33, 34,
-			41, 42, 43, 44
-		];
-
-		varLookUp = [
-			15, 16, 17, 18,
-			25, 26, 27, 28,
-			35, 36, 37, 38,
-			45, 46, 47, 48
-		];
-
-		modLookUp = [
-			80, 70, 50
-		];
-
-		/** MIDI INPUT RESPONDER FUNCTIONS */
-		// TODO: move each to their own method. This way the launchpad doesn't have to
-		// be connected and the code becomes much more readable
-		slotSelectionResponder = MIDIFunc({|vel, note|
-			var slotIndex;
-			slotLookUp.do{|item, i|
-				if(note == item){
-					slotIndex = i;
-				}
-			};
-
-			switch(modifierState,
-				0, { this.selectedSlot_(slotIndex) },
-				2, { this.muteSlot(slotIndex) },
-				4, { this.clearSlot(slotIndex) },
-			);
-		}, slotLookUp, nil, \noteOn, launchpad.inUID);
-
-		varSelectionResponder = MIDIFunc({|vel, note|
-			varLookUp.do{|item, i| if(note == item){ this.selectVariation(i); } };
-		}, varLookUp, nil, \noteOn, launchpad.inUID);
-
+	setActiveSlot{ |slot|
+		// slot.postln;
 		/*
-		modifier states:
-		0: no modifier pressed
-		1: shift modifier pressed -> select range
-		2: click modifier pressed -> mute slot
-		3: ?
-		4: delete modifier pressed -> delete slot sequence
+			select the action to take with modifiers
 		*/
-		// TODO: Make modifiers Symbols or strings for better readability
-		modifierOnResponder = MIDIFunc({|val, cc|
-			switch(cc,
-				80, { if(val > 0){ modifierState = 1 }{ modifierState = 0 } },
-				70, { if(val > 0){ modifierState = 2 }{ modifierState = 0 } },
-				50, { if(val > 0){ modifierState = 4 }{ modifierState = 0 } },
-			)
-		}, modLookUp, nil, \control, launchpad.inUID);
-
-		noteSelectionOnResponder = MIDIFunc({|vel, note|
-			var sl;
-			sl = slots[selectedSlot];
-
-			switch(modifierState,
-				0, { this.createNote(note) },
-				1, { this.changeNumSteps(note) },
-			);
-		}, stepLookUp, nil, \noteOn, launchpad.inUID);
-
-		noteSelectionOffResponder = MIDIFunc({|vel, note|
-			stepLookUp.do{|item, i|
-				if(note == item){
-					pressedKeys.remove(i);
-				};
-			}
-		}, stepLookUp, nil, \noteOff, launchpad.inUID);
-	}
-
-	selectSlot {
-
-	}
-
-	changeNumSteps {|note|
-		var sl = slots[selectedSlot];
-
-		stepLookUp.do{|item, i|
-			if(note == item){
-				pressedKeys.add(i);
-
-				if(pressedKeys.size > 1){
-					sl.numSteps_((pressedKeys.asArray[1] - pressedKeys.asArray[0]));
-
-					if(sl.numSteps.isPositive){
-						sl.numSteps = sl.numSteps + 1;
-						sl.offset_(pressedKeys.asArray[0]);
-					} {
-						sl.numSteps = sl.numSteps - 1;
-						sl.offset_(pressedKeys.asArray[1] - 1);
-					}
-				}
-			}
-		}
-	}
-
-	createNote { |note|
-		var sl = slots[selectedSlot];
-
-		stepLookUp.do{|item, i|
-			if(note == item){
-				if(sl.sequence[i] > 0){
-					sl.sequence.put(i, 0);
-
-					launchpad.sysex(Int8Array[ 240,0,32,41,2,16,10,
-						stepLookUp[i], 0,
-						247]);
+		if(modifier.isEmpty){
+			if(slots[slot].notNil){
+				selectedSlot = slots[slot];
+			};	
+		}{
+			if(modifier.includes('delete')){
+				slots[slot].sequence = 0 ! 32;
+			};
+			
+			if(modifier.includes('mute')) {
+				if(slots[slot].mute){
+					slots[slot].mute = false;
 				}{
-					sl.sequence.put(i, sl.selectedVar + 1);
-					sl.sequence;
-
-					launchpad.sysex(Int8Array[ 240,0,32,41,2,16,10,
-						stepLookUp[i], varLookUp[sl.selectedVar],
-						247]);
+					slots[slot].mute = true;
 				}
-			}
-		}
+			};	
+		};
+
+		this.updateInternalState;
+	}
+	
+	// sequencer logic
+	noteSelection { |i|
+		var step = selectedSlot.sequence[i];
+
+		if(modifier.includes('length')){
+			selectedSlot.numSteps = i + 1;
+		}{
+			if(step == 0){ selectedSlot.sequence[i] = 1 }{ selectedSlot.sequence[i] = 0 };	
+		};
+		
+		this.updateInternalState;
 	}
 
-	selectedSlot_ { |slotIndex|
-		var prevLed, wasMuted, led, activeLed, sl;
-		var drawArr = Array(200);
-
-		prevLed = slotLookUp[selectedSlot];
-		wasMuted = slots[selectedSlot].mute;
-		led = slotLookUp[slotIndex];
-		selectedSlot = slotIndex;
-
-		sl = slots[slotIndex];
-
-		activeLed = stepLookUp[sl.currentStep];
-
-		sl.sequence.do{|item, i|
-			drawArr.add(stepLookUp[i]);
-			if(item > 0){
-				drawArr.add(varLookUp[item - 1]);
-			}{
-				drawArr.add(0);
+	next {
+		slots.do{|item, i|	
+			if(item.notNil){
+				item.nextStep(count);
 			};
 		};
+		
+		count = (count + 1);
+		
+		this.updateInternalState;
+	}
 
-		varLookUp.do{|item, i|
-			drawArr.add(item);
-			if(i == sl.selectedVar){
-				drawArr.add(5);
+	// drawing / interfacing
+	// TODO: wie kann ich hier nur das was sich verändert hat übertragen
+	updateInternalState {
+		var innerGrid = [];
+		var outerGrid = [];
+
+		var state, reducedState;
+		
+		var led, colour;
+
+		// this is not working correctly right now
+		var keepChanged = {|arrA, arrB|
+			var newArr;
+			arrA.do{ |item, i|
+				[item, arrB[i], item != arrB[i]].postln;
+				if(item != arrB[i] ){
+					newArr = newArr ++ [item];
+				};
+				
+			};
+			[newArr]
+		};
+		
+		// construct the values for the step display. The values for colour are
+		// taken from the LaunchpadPro Programmers Manual
+		innerGrid = selectedSlot.sequence.collect {|item, i|
+			
+			led = i;
+
+			if(item == 1){ colour = 32 }{ colour = 0 };
+			if(selectedSlot.currentStep == i){ colour = 9};
+			
+			[led, colour]
+		};
+
+		//construct the values for the slots display
+		innerGrid = innerGrid ++ slotLookup.collect{ |item, i|
+
+			led = item;
+
+			if(slots[i].notNil){
+				if(slots[i] == selectedSlot){
+					if(slots[i].mute){ colour = 3 }{ colour = 5 }
+				}{
+					if(slots[i].mute){ colour = 2 }{ colour = 4 }
+				};
 			}{
-				drawArr.add(item);
-			}
+				colour = 0;
+			};
+			
+			[led, colour]
 		};
 
-		drawArr.add(prevLed);
-		if(wasMuted){ drawArr.add(118) }{ drawArr.add(9) };
+		// placeholder for now
+		outerGrid = [0, 0];
 
-		drawArr.add(led);
-		drawArr.add(18);
+		// construct the complete array
+		state = [innerGrid, outerGrid];
 
-		drawArr.add(activeLed);
-		drawArr.add(12);
+		// all of this is not really working right now, what I want to do
+		// is only redraw the changed LEDs so the display doesn't flicker
+		// but doing this is proving to be difficult because of tons of edge cases
+		// mainly the reduced array sometimes being nil or [something, nil] or [nil, nil]
+		// and the launchpad class not being able to cope with that. I think the solution
+		// might be to restructure this function so it doesn't produce nil because I don't
+		// think it's wise to change the LaunchpadPro class too much.
+		if(internalState.notNil){
+			
+			reducedState = [];
 
-		this.draw(drawArr);
-	}
-
-	selectVariation { |variation|
-		var sl, prevVar;
-		var drawArr = Array(200);
-
-		sl = slots[selectedSlot];
-		prevVar = sl.selectedVar;
-		sl.selectedVar_(variation);
-
-		drawArr.add(varLookUp[prevVar]);
-		drawArr.add(varLookUp[prevVar]);
-		drawArr.add(varLookUp[variation]);
-		drawArr.add(5);
-
-		this.draw(drawArr);
-	}
-
-	addSlot {|index, variation, func|
-		slots[index].synthFuncs[variation] = func;
-	}
-
-	clearSlot {|slotIndex|
-		var prevLed, led, activeLed, sl;
-		var drawArr = Array(200);
-
-		led = slotLookUp[selectedSlot];
-
-		sl = slots[selectedSlot];
-
-		activeLed = stepLookUp[sl.currentStep];
-
-		slots[slotIndex].sequence = 0 ! 32;
-
-		sl.sequence.do{|item, i|
-			drawArr.add(stepLookUp[i]);
-			drawArr.add(0);
-		};
-
-		this.draw(drawArr);
-	}
-
-	muteSlot{ |slotIndex|
-		var sl;
-		var drawArr = Array(200);
-
-		sl = slots[slotIndex];
-
-		drawArr.add(slotLookUp[slotIndex]);
-
-		if(sl.mute){
-			sl.mute = false;
-			if(slotIndex == selectedSlot){
-				drawArr.add(18);
-			}{
-				drawArr.add(9);
-			}
+			reducedState = keepChanged.(state[0], internalState[0]);
+			reducedState = reducedState ++ keepChanged.(state[1], internalState[1]);
+		
+			reducedState.postln;
 		}{
-			sl.mute = true;
-			drawArr.add(118);
+			reducedState = state;
 		};
+		// check if the mode is active before calling the draw methods
+		// NOTE: it is important to execute the rest of the function so
+		// that when we recall the state of this mode when switching to
+		// it the current state is recalled and not some old state
+		if(this.isActive){ launchpad.updateLeds(state) };
 
-
-		this.draw(drawArr);
-	}
-
-
-	nextStep {
-		var prevLed, selectedLed, activeLed, sl;
-		var prevStep;
-		var drawArr = Array(200);
-
-		slots.do{|item|
-			var step, variation;
-			item.nextStep(i);
-			step = item.currentStep;
-			if(item.sequence[step] > 0){
-				item.play(item.sequence[step] - 1)
-			}
-		};
-
-		sl = slots[selectedSlot];
-
-		prevLed = stepLookUp[sl.prevStep];
-		activeLed = stepLookUp[sl.currentStep];
-
-		drawArr.add(prevLed);
-
-		prevStep = sl.sequence[sl.prevStep];
-
-		if(prevStep > 0){
-
-			drawArr.add(varLookUp[prevStep - 1]);
-		}{
-			drawArr.add(0);
-		};
-
-		drawArr.add(activeLed);
-		drawArr.add(16);
-
-		this.draw(drawArr);
-
-		i = i + 1;
-	}
-
-	draw {|arr|
-		var full, body, end;
-		body = Int8Array.newFrom(arr);
-		end = Int8Array[247];
-		full = drawArrHeader ++ body ++ end;
-		launchpad.sysex(full);
-	}
-
-	reset {
-		var drawArr;
-		slots.do{|sl|
-			sl.currentStep_(0);
-			sl.prevStep_(0);
-			sl.numSteps_(32);
-			sl.sequence_(0 ! 32);
-		};
-
-		launchpad.sysex(Int8Array[ 240,0,32,41,2,16,14,0,247]);
-
-		slotLookUp.do{|item|
-			drawArr.add(item);
-			drawArr.add(9);
-		};
-
+		internalState = state;
 	}
 }
-*/

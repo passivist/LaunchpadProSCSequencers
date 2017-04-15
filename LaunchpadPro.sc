@@ -179,9 +179,10 @@ LaunchpadPro {
 	updateLeds {|stateArr|
 		
 		var innerLeds, outerLeds;
+
 		innerLeds = [];
 		outerLeds = [];
-
+		
 		/*
 			Draw the mode leds
 		*/
@@ -197,15 +198,19 @@ LaunchpadPro {
 			Draw the current state of the selected mode, the modes will
 			only call this when their isActive flag is true
 		*/
-		if(stateArr.notNil){
-			// prepare innerLeds for drawing		
-			innerLeds = stateArr[0].flop;
-			
-			innerLeds[0] = innerLeds[0].collect{ |item, i|
-				innerLookup[item];
-			};
+		// postf("\nFinal Array before drawing: %\n", stateArr );
 
-			this.drawLed(innerLeds[0], innerLeds[1]);
+		if(stateArr.notNil){
+			// prepare innerLeds for drawing
+			if(stateArr[0][0].notNil){
+				innerLeds = stateArr[0].flop;
+				
+				innerLeds[0] = innerLeds[0].collect{ |item, i|
+					innerLookup[item];
+				};
+
+				this.drawLed(innerLeds[0], innerLeds[1]);				
+			}
 		}
 	}
 

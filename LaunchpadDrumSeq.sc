@@ -190,24 +190,27 @@ LaunchpadDrumSeq {
 		var outerGrid = [];
 
 		var state, reducedState;
+		var isEmpty;
 		
 		var led, colour;
 
 		// function to only keep the changed things to draw
+		// fehler tritt beim 2ten aufrufen der funktion auf
+		// also bei outerGrid
 		var keepChanged = {|new, old|
 			var newArr;
-			"\n \nArray Diagnostics: ".postln;
+			// "\n \nArray Diagnostics: ".postln;
 			new.do{ |item, i|
-				postf("New: % Old: %, HasChanged: % \n", item, old[i], item != old[i]);
+				// postf("New: % Old: %, HasChanged: % \n", item, old[i], item != old[i]);
 				if(item.includes(nil).not){
 					if(item != old[i] ){
 						newArr = newArr ++ [item];
-						postf("NewArr: % \n", newArr);
+						// postf("NewArr: % \n", newArr);
 					};
 				}
 			};
 
-			postf("isArrNil: % finalArr: % \n", newArr.isNil, newArr);
+			// postf("isArrNil: % finalArr: % \n", newArr.isNil, newArr);
 
 			if(newArr.notNil){ newArr }{ [] }
 		};
@@ -243,25 +246,18 @@ LaunchpadDrumSeq {
 		};
 
 		// placeholder for now
-		outerGrid = [0, 0];
+		outerGrid = [[0, 0]];
 
 		// construct the complete array
 		state = [innerGrid, outerGrid];
 
-		// all of this is not really working right now, what I want to do
-		// is only redraw the changed LEDs so the display doesn't flicker
-		// but doing this is proving to be difficult because of tons of edge cases
-		// mainly the reduced array sometimes being nil or [something, nil] or [nil, nil]
-		// and the launchpad class not being able to cope with that. I think the solution
-		// might be to restructure this function so it doesn't produce nil because I don't
-		// think it's wise to change the LaunchpadPro class too much.
 		if(internalState.notNil){
 			
 			reducedState = [];
 
-			reducedState = state.collect{|item, i| keepChanged.(item, state[i])};
+			reducedState = state.collect{|item, i| keepChanged.(item, internalState[i])};
 		
-			reducedState.postcs;
+			// postf("\nreduced drawing array: %\n", reducedState );
 		}{
 			reducedState = state;
 		};
@@ -269,7 +265,8 @@ LaunchpadDrumSeq {
 		// NOTE: it is important to execute the rest of the function so
 		// that when we recall the state of this mode when switching to
 		// it the current state is recalled and not some old state
-		if(this.isActive){ launchpad.updateLeds(state) };
+		
+		if(this.isActive){ launchpad.updateLeds(reducedState) };
 
 		internalState = state;
 	}

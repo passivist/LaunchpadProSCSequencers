@@ -53,7 +53,7 @@
 	env = EnvGen.ar(Env.perc(0.001, 0.1), doneAction: 2);
 	mod = SinOsc.ar([1730, 3420]) * env;
 	sig = SinOsc.ar([1120, 1130], mod * 2 * env) * env;
-	Out.ar(out, sig * 0.2)
+	Out.ar(out, sig * 0.1)
 });
 
 ~dr.registerSlot(6, { |out|
@@ -66,8 +66,9 @@
 
 	Out.ar(out, sig * 0.2)
 });
-
 )
+
+TempoClock.tempo = 110/120
 
 (
 Tdef(\testSeq, {
@@ -78,38 +79,12 @@ Tdef(\testSeq, {
 }).play;
 )
 
-TempoClock.tempo = 110/120
-
-110 / 120
-
 Tdef(\testSeq).stop;
 
-~dr.slots[0].currentStep;
-~dr.slots[0].nextStep;
-~dr.updateInternalState;
-
-~dr.next
-s.boot;
-
-~dr.next
 (
 ~dr.slots[2].synthFunc = {}
 
 );
-(
-~dr.slots[6].synthFunc = { |out|
-	var env, sig;
-	var dur = 0.1;
-	env = EnvGen.ar(Env.perc(0.001, dur), doneAction: 2);
-	sig = WhiteNoise.ar(0.5);
-	sig = Ringz.ar(sig, 5000, 0.01) * env;
-	sig = Pan2.ar(sig, 0.3);
-
-	Out.ar(out, sig * 0.2)
-};
-)
-
-~dr.internalState
 
 (
 ~keepChanged = {|new, old|
@@ -137,3 +112,5 @@ b = [[[0, 1], [1, 0], [12, 1]], [[55, 1], [56, nil]]];
 
 c = b.collect{ |item, i| ~keepChanged.(item, a[i]) };
 c[0].flop
+
+

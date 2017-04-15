@@ -173,14 +173,18 @@ LaunchpadPro {
 		I recommend calling this whenever changing the internal state of the LaunchpadPro Object or one of the modes 
 		I opted to format the stateArr thus for usability:
 		[[innnerGrid [LED, Colour] pairs], [outerGrid [LED, Colour] Pairs] ]
+		
+		We rely on the modes to reset LEDs so we don't have to redraw everything everytime
 	*/
 	updateLeds {|stateArr|
+		
 		var innerLeds, outerLeds;
 		innerLeds = [];
 		outerLeds = [];
-		
-		//this.resetLeds;
 
+		/*
+			Draw the mode leds
+		*/
 		modes.do{|mode, i|
 			if(mode.isActive){
 				this.drawLed(modeLookup[i], 13)
@@ -188,7 +192,11 @@ LaunchpadPro {
 				this.drawLed(modeLookup[i], 0)
 			}
 		};
-		
+
+		/*
+			Draw the current state of the selected mode, the modes will
+			only call this when their isActive flag is true
+		*/
 		if(stateArr.notNil){
 			// prepare innerLeds for drawing		
 			innerLeds = stateArr[0].flop;

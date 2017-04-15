@@ -110,3 +110,30 @@ s.boot;
 )
 
 ~dr.internalState
+
+(
+~keepChanged = {|new, old|
+	var newArr;
+	"\nArray Diagnostics: ".postln;
+	new.do{ |item, i|
+		postf("New: % Old: %, HasChanged: % \n", item, old[i], item != old[i]);
+		if(item.includes(nil).not){
+			if(item != old[i] ){
+				newArr = newArr ++ [item];
+				postf("NewArr: % \n", newArr);
+			};
+		}
+	};
+
+	postf("isArrNil: % finalArr: % \n\n", newArr.isNil, newArr);
+
+	if(newArr.notNil){ newArr }{ [] }
+};
+)
+
+a = [[[0, 1], [1, 1], [12, 0]], [[55, 1], [56, 0]]];
+b = [[[0, 1], [1, 0], [12, 1]], [[55, 1], [56, 1]]];
+b = [[[0, 1], [1, 0], [12, 1]], [[55, 1], [56, nil]]];
+
+c = b.collect{ |item, i| ~keepChanged.(item, a[i]) };
+c[0].flop

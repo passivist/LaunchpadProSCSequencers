@@ -193,17 +193,23 @@ LaunchpadDrumSeq {
 		
 		var led, colour;
 
-		// this is not working correctly right now
-		var keepChanged = {|arrA, arrB|
+		// function to only keep the changed things to draw
+		var keepChanged = {|new, old|
 			var newArr;
-			arrA.do{ |item, i|
-				[item, arrB[i], item != arrB[i]].postln;
-				if(item != arrB[i] ){
-					newArr = newArr ++ [item];
-				};
-				
+			"\n \nArray Diagnostics: ".postln;
+			new.do{ |item, i|
+				postf("New: % Old: %, HasChanged: % \n", item, old[i], item != old[i]);
+				if(item.includes(nil).not){
+					if(item != old[i] ){
+						newArr = newArr ++ [item];
+						postf("NewArr: % \n", newArr);
+					};
+				}
 			};
-			[newArr]
+
+			postf("isArrNil: % finalArr: % \n", newArr.isNil, newArr);
+
+			if(newArr.notNil){ newArr }{ [] }
 		};
 		
 		// construct the values for the step display. The values for colour are
@@ -253,10 +259,9 @@ LaunchpadDrumSeq {
 			
 			reducedState = [];
 
-			reducedState = keepChanged.(state[0], internalState[0]);
-			reducedState = reducedState ++ keepChanged.(state[1], internalState[1]);
+			reducedState = state.collect{|item, i| keepChanged.(item, state[i])};
 		
-			reducedState.postln;
+			reducedState.postcs;
 		}{
 			reducedState = state;
 		};

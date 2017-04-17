@@ -1,5 +1,5 @@
 /*
-	* LaunchpadPro a class for handling interfacing with the LaunchpadPro hardware.
+	LaunchpadPro a class for handling interfacing with the LaunchpadPro hardware.
 */
 
 LaunchpadPro {
@@ -135,6 +135,8 @@ LaunchpadPro {
 			var stateArr;
 
 			if(val > 0){ // only respond to "note-on" even though these are cc values
+				this.resetLeds;
+				
 				modeLookup.do{|item, i|
 					if(cc == item){ modeToActivate = i }
 				};
@@ -147,7 +149,7 @@ LaunchpadPro {
 						mode.isActive_(false)
 					}
 				};
-
+				
 				this.updateLeds(stateArr);
 			}
 		}, modeLookup, nil, inUID);
@@ -198,8 +200,9 @@ LaunchpadPro {
 			Draw the current state of the selected mode, the modes will
 			only call this when their isActive flag is true
 		*/
-		// postf("\nFinal Array before drawing: %\n", stateArr );
+		postf("\nFinal Array before drawing: %\n", stateArr );
 
+		// maybe wrap this in a method or function
 		if(stateArr.notNil){
 			// prepare innerLeds for drawing
 			if(stateArr[0][0].notNil){
@@ -209,8 +212,18 @@ LaunchpadPro {
 					innerLookup[item];
 				};
 
-				this.drawLed(innerLeds[0], innerLeds[1]);				
-			}
+				this.drawLed(innerLeds[0], innerLeds[1]);
+			};
+
+			if(stateArr[1][0].notNil){
+				outerLeds = stateArr[1].flop;
+
+				outerLeds[0] = outerLeds[0].collect { |item, i|
+					outerLookup[item];
+				};
+
+				this.drawLed(outerLeds[0], outerLeds[1]);
+			};
 		}
 	}
 

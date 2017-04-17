@@ -40,7 +40,7 @@
 	aEnv = EnvGen.ar(Env.perc(0.001, dur), doneAction: 2);
 	pEnv = EnvGen.ar(Env([150, 100], dur, -12));
 	nEnv = EnvGen.ar(Env.perc(0.001, 0.2, 1, -6));
-	noise = WhiteNoise.ar(0.2) * nEnv;
+	noise = WhiteNoise.ar(WhiteNoise.ar(0.2)) * nEnv;
 	sig = SinOsc.ar(pEnv) * aEnv ! 2;
 	sig = (sig + noise).tanh;
 

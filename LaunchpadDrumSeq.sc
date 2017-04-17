@@ -245,8 +245,8 @@ LaunchpadDrumSeq {
 			[led, colour]
 		};
 
-		// placeholder for now
-		outerGrid = [[0, 0]];
+		// always light the modifiers
+		outerGrid = [[4, 16], [7, 16], [22, 16]];
 
 		// construct the complete array
 		state = [innerGrid, outerGrid];

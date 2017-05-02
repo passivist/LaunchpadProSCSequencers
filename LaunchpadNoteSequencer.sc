@@ -20,11 +20,12 @@ LaunchpadNoteSequencer {
 		sequence = [0, 0] ! 64;
 
 		// does it make sense to use a point here... Don't know yet
+		// best to keep it simple for now
 		position = [0, 0];
 	}
 
 	inputCallback { |button, val, type|
-		[button, val, type].postln;
+		//[button, val, type].postln;
 
 		/* INNER GRID */
 		if(type == 'inner'){
@@ -50,6 +51,9 @@ LaunchpadNoteSequencer {
 		};
 	}
 
+	// TODO: right now the updateInternalState function doesn't handle scrolling
+	// correctly... buttons that should turn on do indeed turn on but nothing turns off again
+	// need to investigate
 	scroll { |direction|
 		switch(direction,
 			// up
@@ -62,10 +66,10 @@ LaunchpadNoteSequencer {
 			3, { position = position + [1, 0] }
 		);
 
-		this.updateInternalState;
+		this.updateInternalState(true);
 	}
 
-	updateInternalState {
+	updateInternalState {|reset = false|
 		// fill an array with the appropriate horizontal slice of the sequence
 		var innerGrid, outerGrid;
 		var state;
@@ -101,6 +105,11 @@ LaunchpadNoteSequencer {
 			0,   1,  2,  3,  4,  5,  6,  7
 		];
 
+		// if the reset flag is set reset the inner Grid before continuing
+		if(reset){
+			launchpad.resetLeds;
+		};
+
 		innerGrid = 8.collect{|i| sequence[i + position[0]] };
 		
 		innerGrid = innerGrid.collect{|item, i|
@@ -130,8 +139,11 @@ LaunchpadNoteSequencer {
 					"in range".postln;
 				};
 			}{
+				// this should turn the LEDs off... but why doesn't it???
 				led = buttonLookup[ ((item[0] - position[1]) * 8) + i];
 				colour = 0;
+
+				"off".postln;
 			};
 
 			[led, colour].postln;

@@ -195,8 +195,6 @@ LaunchpadDrumSeq {
 		var led, colour;
 
 		// function to only keep the changed things to draw
-		// fehler tritt beim 2ten aufrufen der funktion auf
-		// also bei outerGrid
 		var keepChanged = {|new, old|
 			var newArr;
 			// "\n \nArray Diagnostics: ".postln;

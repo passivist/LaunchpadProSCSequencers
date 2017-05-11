@@ -200,7 +200,7 @@ LaunchpadPro {
 			Draw the current state of the selected mode, the modes will
 			only call this when their isActive flag is true
 		*/
-		postf("\nFinal Array before drawing: %\n", stateArr );
+		// postf("\nFinal Array before drawing: %\n", stateArr );
 
 		// maybe wrap this in a method or function
 		if(stateArr.notNil){

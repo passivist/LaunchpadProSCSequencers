@@ -1,12 +1,16 @@
 LaunchpadNoteSequencer {
 	var <>modeID, <>launchpad, <>isActive;
-
-	var <>sequence;
-
 	var <>position;
 	
+	var <>sequence;
+
+	var <>stepCounter, <>numSteps, <>numSteps, <nextFlag, <repetitionCounter;
+	var modifier;
+	var mode;
 	var <internalState;
-	
+
+	var buttonLookup;
+
 	*new { |modeID, launchpad, isActive=false|
 		^super.new.init(modeID, launchpad, isActive);
 	}
@@ -16,20 +20,53 @@ LaunchpadNoteSequencer {
 		launchpad = lPad;
 		isActive = active;
 
-		// format: note, velocity, ccs...
-		sequence = [0, 0] ! 64;
+		modifier = Set[];
+
+		// start up the sequencer in note mode
+		mode = 'note';
+
+		// format: [[note, velocity, repetitions, hold], [...]] (in the future maybe ccs etc...)
+		sequence = [0, 0, 0, false] ! 16;
 
 		// does it make sense to use a point here... Don't know yet
 		// best to keep it simple for now
 		position = [0, 0];
+
+		// a counter for the playback position:
+		stepCounter = 0;
+		nextFlag = true;
+		repetitionCounter = 0;
+
+		this.numSteps = 8;
+
+		//is there a more elegant and safe way than lookuptables?
+		buttonLookup = [
+			56, 57, 58, 59, 60, 61, 62, 63,
+			48, 49, 50, 51, 52, 53, 54, 55,
+			40, 41, 42, 43, 44, 45, 46, 47,
+			32, 33, 34, 35, 36, 37, 38, 39,
+			24, 25, 26, 27, 28, 29, 30, 31,
+			16, 17, 18, 19, 20, 21, 22, 23,
+			8 ,  9, 10, 11, 12, 13, 14, 15,
+			0 ,  1,  2,  3,  4,  5,  6,  7,
+		];
 	}
 
 	inputCallback { |button, val, type|
-		//[button, val, type].postln;
+		[button, val, type].postln;
 
 		/* INNER GRID */
-		if(type == 'inner'){
-			
+		if((type == 'inner') && (val > 0)){
+			var x = (button % 8);
+			var y = (button / 8).floor;
+
+			// [x, y].postln;
+			switch(mode,
+				'note', { this.noteSelection(x, y) },
+				'repetition', { this.repSelection(x, y) },
+				'octave', { this.octaveSelection(x, y) }
+			);
+
 		};
 
 		/* OUTER EDGE */
@@ -41,29 +78,122 @@ LaunchpadNoteSequencer {
 
 			/* MODIFIER KEYS */
 			if(((button > 3) && (button < 12)) || ((button > 19) && (button < 28) )){
-	
+				switch(button,
+					// modifiers:
+					4, { if(val > 0){ modifier.add('shift') }{ modifier.remove('shift') } },
+					// editing modes:
+					20, { mode = 'note'; this.updateInternalState(true); },
+					21, { mode = 'repetition'; this.updateInternalState(true); },
+					22, { mode = 'octave'; this.updateInternalState(true); },
+				)
 			};
 
 			/* VALUE KEYS  */
 			if(((button > 11) && (button < 20)) && (val > 0)){
-				
+
 			};
 		};
 	}
 
-	// TODO: right now the updateInternalState function doesn't handle scrolling
-	// correctly... buttons that should turn on do indeed turn on but nothing turns off again
-	// need to investigate
+	/* SEQUENCER **/
+	noteSelection { |x, y|
+		// the rows are reversed in this mode so we need another lookup table
+		// maybe we need to wrap all this behaviour in a function earlier in
+		// the process so we don't have to deal with this so many times
+		var noteLookup = (7 .. 0);
+
+		// the position at which we want to input into the sequence
+		var inputPos = position[0] + x;
+
+		// the note position with offset
+		var note = position[1] + noteLookup[y];
+
+		var selectedSlot = sequence[inputPos];
+
+		// [inputPos, note, selectedSlot].postln;
+		
+		if(selectedSlot[1] == 0){
+			// "case 0".postln;
+			// there is no note in the selected slot
+			// --> create a note
+			sequence[inputPos][0] = note;
+			sequence[inputPos][1] = 1;
+		}{
+			// there is a note in the selected slot
+			if(note == selectedSlot[0]){
+				// "case 1".postln;
+				// the selected note is equal to the note in the selected slot
+				// --> delete the note
+				sequence[inputPos][0] = 0;
+				sequence[inputPos][1] = 0;
+			}{
+				// "case 2".postln;
+				// the selected note is not equal to the note in the selected slot
+				// --> change the existing note to the selected note
+				sequence[inputPos][0] = note;
+				sequence[inputPos][1] = 1;
+			}
+		};
+
+		this.updateInternalState(true);
+	}
+
+	repSelection { |x, y|
+		var repLookup = (7 .. 0);
+		var inputPos = position[0] + x;
+		var repetition = repLookup[y];
+
+		sequence[inputPos][2] = repetition;
+		
+		this.updateInternalState(true);
+	}
+
+	octaveSelection{|x, y|
+
+		this.updateInternalState(true);
+	}
+
+	/* PLAYBACK **/
+	next {
+		var currentStep;
+
+		this.numSteps.postln;
+		
+		currentStep = sequence[stepCounter];
+		// postf("currentStep: %; stepCounter: %; nextFlag %;\n", currentStep, stepCounter, nextFlag);
+
+		// nextFlag is true before evaluating next() this means that we have
+		// just moved from the previous step --> initialize everything
+		if(nextFlag){
+			repetitionCounter = currentStep[2];
+			nextFlag = false;
+		};
+
+		// if repetitionCounter reaches 0 we set nextFlag to true and
+		// iterate to the next step. If not we decrement repetitionCounter
+		if(repetitionCounter < 1){
+			nextFlag = true;
+			stepCounter = (stepCounter + 1) % this.numSteps;
+		}{
+			repetitionCounter = repetitionCounter - 1;
+		};
+	}
+
+	/* DRAWING **/
 	scroll { |direction|
+		var val;
+
+		if( modifier.includes('shift') ){ val = 8; }{ val = 1; };
+
 		switch(direction,
 			// up
-			0, { position = position + [0, 1] },
+			0, { position = position + [0, val] },
 			// down
-			1, { position = position - [0, 1] },
+			1, { position = position - [0, val] },
 			// left
-			2, { position = position - [1, 0] },
+			2, { if((position[0] - val) >= 0){position = position - [val, 0] } },
 			// right
-			3, { position = position + [1, 0] }
+			3, { if((position[0] + val) < (sequence.size - 7)){position = position + [val, 0] } }
 		);
 
 		this.updateInternalState(true);
@@ -73,7 +203,7 @@ LaunchpadNoteSequencer {
 		// fill an array with the appropriate horizontal slice of the sequence
 		var innerGrid, outerGrid;
 		var state;
-		
+
 		var led, colour;
 
 		var keepChanged = {|new, old|
@@ -88,24 +218,14 @@ LaunchpadNoteSequencer {
 					};
 				};
 			};
-			
+
 			// postf("isArrNil: % finalArr: % \n", newArr.isNil, newArr);
 
 			if(newArr.notNil){ newArr }{ [] }
 		};
 
-		var buttonLookup = [
-			56, 57, 58, 59, 60, 61, 62, 63,
-			48, 49, 50, 51, 52, 53, 54, 55,
-			40, 41, 42, 43, 44, 45, 46, 47,
-			32, 33, 34, 35, 36, 37, 38, 39,
-			24, 25, 26, 27, 28, 29, 30, 31,
-			16, 17, 18, 19, 20, 21, 22, 23,
-			8,   9, 10, 11, 12, 13, 14, 15,
-			0,   1,  2,  3,  4,  5,  6,  7
-		];
-
 		// if the reset flag is set reset the inner Grid before continuing
+		// this allows us to make scrolling work without complicated maths
 		if(reset){
 			launchpad.resetLeds;
 		};
@@ -113,48 +233,68 @@ LaunchpadNoteSequencer {
 		innerGrid = 8.collect{|i| sequence[i + position[0]] };
 		
 		innerGrid = innerGrid.collect{|item, i|
-			// test if velocity is > 0
-			if(item[1] > 0){
-				// the note	is below the visible area
-				if(item[0] < position[1]){
-					led = i + 56;
-					colour = 36;
+			switch(mode,
+				// note mode: draw the notes
+				'note', {
+					var note = item[0];
+					var vel = item[1];
+					// test if velocity is > 0
+					if(vel > 0){
+						// the note	is below the visible area:
+						// --> draw a blue LED in the downmost row
+						if(note < position[1]){
+							led = i + 56;
+							colour = 36;
+						};
 
-					"below".postln;
-				};
-				
-				// the note is above the visible area
-				if(item[0] > (position[1] + 8)){
-					led = i;
-					colour = 36;
+						// the note is above the visible area:
+						// --> draw a blue LED in the upmost row
+						if(note > (position[1] + 7)){
+							led = i;
+							colour = 36;
+						};
 
-					"above".postln;
-				};
+						// the note is in the visible area:
+						// --> draw the note at the appropriate position
+						if((note >= position[1]) && (note < (position[1] + 8))){
+							led = buttonLookup[ i + ((note - position[1]) * 8)];
+							
+							colour = 4;
+						};
+					}{
+						// there is a rest / no note:
+						// --> draw a black LED at the appropriate spot
+						led = buttonLookup[i];
+						colour = 0;
+					};
+				},
+				// repetition mode: draw the states of the repetition and hold variables
+				'repetition', {
+					var rep = item[2];
+					var hold = item[3];
 
-				// the note is in the visible area
-				if((item[0] >= position[1]) && (item[0] < (position[1] + 8))){
-					led = buttonLookup[ ((item[0] - position[1]) * 8) + i];
-					colour = 4;
+					led = buttonLookup[ i + (rep * 8).floor];
+					colour = 15;
+				},
 
-					"in range".postln;
-				};
-			}{
-				// this should turn the LEDs off... but why doesn't it???
-				led = buttonLookup[ ((item[0] - position[1]) * 8) + i];
-				colour = 0;
+				// octave mode: draw the octave states
+				'octave', {
+					led = 0;
+					colour = 0;
+				}
+			);
 
-				"off".postln;
-			};
 
-			[led, colour].postln;
-			
+			[led, colour]
 		};
 
-		// light up modifiers
-		outerGrid = [[4, 16], [5, 16], [7, 16], [22, 16]];
-		
-		state = [innerGrid, outerGrid].postln;
+		// light up the modifiers
+		outerGrid = [[4, 16], [5, 16], [7, 16], [20, 16], [21, 16], [22, 16]];
 
+		state = [innerGrid, outerGrid];
+		
+		internalState = state;
+		
 		launchpad.updateLeds(state);
 	}
 }

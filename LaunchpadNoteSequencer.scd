@@ -2,43 +2,31 @@
 ~l = LaunchpadPro();
 ~n = LaunchpadNoteSequencer(1, ~l);
 ~l.registerMode(~n);
-)
 
-~n.position;
-~n.sequence.postcs;
-~n.sequence = ~n.sequence.collect{ |item, i| [8.rand, 128.rand].postln};
+~n.numSteps = 5;
 
-~n.sequence[0].postln;
-~n.numSteps = 7
-~n.numSteps
-
-(
-SynthDef(\sin, {|out, freq, amp|
+~n.synthFunc = {|out, freq=200, amp=0.1, gate=1|
 	var sig, env;
-	env = EnvGen.ar(Env.perc(0.02, 0.5), doneAction: 2);
-	sig = SinOscFB.ar(freq, env * 1.2, amp * env);
+	env = EnvGen.ar(Env.adsr(0.02, 0.5, 0.2, 0.1), gate, doneAction: 2);
+	sig = SinOscFB.ar(freq, env * 0.6, amp * env);
 
 	Out.ar(out, sig ! 2)
-}).add;
+};
 )
 
+~n.sequence[0][3] = true;
+~n.sequence[0][2] = 1;
+
+~n.sequence[0]
 (
 Tdef(\test, {
 	loop{
-		var freq, amp;
-		var step = ~n.sequence[~n.stepCounter];
-
-		freq = Scale.melodicMinor.degreeToFreq(step[0], 60.midicps, 1);
-		
-		amp = step[1] * 0.6;
-
-		Synth(\sin, [\freq, freq, \amp, amp]);
-
 		~n.next;
-
-		0.125.wait		
+		0.25.wait		
 	}
 }).play;
 )
 
 Tdef(\test).stop;
+a = ~n.synthFunc.play(args: [\freq, 600])
+a.release;

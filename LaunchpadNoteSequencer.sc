@@ -1,16 +1,18 @@
 LaunchpadNoteSequencer {
 	var <>modeID, <>launchpad, <>isActive;
 	var <>position;
-	
-	var <>sequence;
 
-	var <>stepCounter, <>numSteps, <>numSteps, <nextFlag, <repetitionCounter;
 	var modifier;
 	var mode;
 	var <internalState;
 
 	var buttonLookup;
 
+	var <>sequence;
+	var <>stepCounter, <>numSteps, nextFlag, repetitionCounter, holdFlag;
+
+	var <>synthFunc, <>synth;
+	
 	*new { |modeID, launchpad, isActive=false|
 		^super.new.init(modeID, launchpad, isActive);
 	}
@@ -25,20 +27,23 @@ LaunchpadNoteSequencer {
 		// start up the sequencer in note mode
 		mode = 'note';
 
-		// format: [[note, velocity, repetitions, hold], [...]] (in the future maybe ccs etc...)
-		sequence = [0, 0, 0, false] ! 16;
-
 		// does it make sense to use a point here... Don't know yet
 		// best to keep it simple for now
 		position = [0, 0];
+		
+		// format: [[note, velocity, repetitions, hold], [...]] (in the future maybe ccs etc...)
+		sequence = [0, 0, 0, false] ! 16;
 
 		// a counter for the playback position:
 		stepCounter = 0;
 		nextFlag = true;
 		repetitionCounter = 0;
-
+		holdFlag = false;
+		
 		this.numSteps = 8;
 
+		synthFunc = {};
+		
 		//is there a more elegant and safe way than lookuptables?
 		buttonLookup = [
 			56, 57, 58, 59, 60, 61, 62, 63,
@@ -156,18 +161,28 @@ LaunchpadNoteSequencer {
 	/* PLAYBACK **/
 	next {
 		var currentStep;
-
-		this.numSteps.postln;
 		
 		currentStep = sequence[stepCounter];
 		// postf("currentStep: %; stepCounter: %; nextFlag %;\n", currentStep, stepCounter, nextFlag);
 
 		// nextFlag is true before evaluating next() this means that we have
 		// just moved from the previous step --> initialize everything
-		if(nextFlag){
-			repetitionCounter = currentStep[2];
-			nextFlag = false;
+		if(nextFlag){ repetitionCounter = currentStep[2] };
+
+		// check if the velocity of the current step is > 0 if not release any
+		// playing synth.
+		if(currentStep[1] > 0){
+			// if the hold flag of the step is false or nextFlag is true   
+			if(currentStep[3].not || nextFlag){
+				if(synth.isPlaying){ synth.release };
+				this.play(currentStep[0], currentStep[1]);		
+			}
+		}{
+			if(synth.isPlaying){ synth.release };
 		};
+
+		// if this is the first step set nextFlag to false
+		if(nextFlag){ nextFlag = false };
 
 		// if repetitionCounter reaches 0 we set nextFlag to true and
 		// iterate to the next step. If not we decrement repetitionCounter
@@ -177,6 +192,12 @@ LaunchpadNoteSequencer {
 		}{
 			repetitionCounter = repetitionCounter - 1;
 		};
+	}
+
+	play {|note, amp|
+		var freq = Scale.minor.degreeToFreq(note, 60.midicps, 1).postln;
+		this.synth = synthFunc.play(args: [\freq, freq, \amp, 0.4]);
+		NodeWatcher.register(synth);
 	}
 
 	/* DRAWING **/

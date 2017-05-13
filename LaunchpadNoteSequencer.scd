@@ -1,6 +1,6 @@
 (
 ~l = LaunchpadPro();
-~n = LaunchpadNoteSequencer(1, ~l);
+~n = LaunchpadNoteSeq(1, ~l);
 ~l.registerMode(~n);
 
 ~n.numSteps = 5;
@@ -14,19 +14,20 @@
 };
 )
 
-~n.sequence[0][3] = true;
-~n.sequence[0][2] = 1;
-
-~n.sequence[0]
 (
 Tdef(\test, {
 	loop{
 		~n.next;
-		0.25.wait		
+		0.125.wait;
 	}
 }).play;
 )
 
 Tdef(\test).stop;
+
 a = ~n.synthFunc.play(args: [\freq, 600])
 a.release;
+
+~n.sequence[0][3] = true;
+~n.sequence[0][2] = 1;
+~n.sequence[0];

@@ -2,7 +2,9 @@
 //MIDIClient.init;
 ~l = LaunchpadPro();
 ~dr = LaunchpadDrumSeq(0, ~l);
+~n = LaunchpadNoteSeq(1, ~l);
 ~l.registerMode(~dr);
+~l.registerMode(~n);
 )
 
 (
@@ -66,6 +68,16 @@
 
 	Out.ar(out, sig * 0.2)
 });
+
+
+~n.synthFunc = {|out, freq=200, amp=0.1, gate=1|
+	var sig, env;
+	env = EnvGen.ar(Env.adsr(0.02, 0.5, 0.2, 0.1), gate, doneAction: 2);
+	sig = SinOscFB.ar(freq, env * 0.6, amp * env);
+
+	Out.ar(out, sig ! 2)
+};
+
 )
 
 TempoClock.tempo = 110/120
@@ -74,6 +86,7 @@ TempoClock.tempo = 110/120
 Tdef(\testSeq, {
 	loop{
 		~dr.next;
+		~n.next;
 		0.125.wait;
 	}
 }).play;

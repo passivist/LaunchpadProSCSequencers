@@ -1,4 +1,4 @@
-LaunchpadNoteSequencer {
+LaunchpadNoteSeq {
 	var <>modeID, <>launchpad, <>isActive;
 	var <>position;
 
@@ -58,7 +58,7 @@ LaunchpadNoteSequencer {
 	}
 
 	inputCallback { |button, val, type|
-		[button, val, type].postln;
+		// [button, val, type].postln;
 
 		/* INNER GRID */
 		if((type == 'inner') && (val > 0)){
@@ -67,11 +67,11 @@ LaunchpadNoteSequencer {
 
 			// [x, y].postln;
 			switch(mode,
-				'note', { this.noteSelection(x, y) },
-				'repetition', { this.repSelection(x, y) },
-				'octave', { this.octaveSelection(x, y) }
+				'note',       { this.noteSelection(x, y)   },
+				'repetition', { this.repSelection(x, y)    },
+				'octave',     { this.octaveSelection(x, y) },
+				'length',     { this.lengthSelection(button) },
 			);
-
 		};
 
 		/* OUTER EDGE */
@@ -83,19 +83,27 @@ LaunchpadNoteSequencer {
 
 			/* MODIFIER KEYS */
 			if(((button > 3) && (button < 12)) || ((button > 19) && (button < 28) )){
+				// modifiers
 				switch(button,
-					// modifiers:
 					4, { if(val > 0){ modifier.add('shift') }{ modifier.remove('shift') } },
-					// editing modes:
-					20, { mode = 'note'; this.updateInternalState(true); },
-					21, { mode = 'repetition'; this.updateInternalState(true); },
-					22, { mode = 'octave'; this.updateInternalState(true); },
-				)
+				);
+
+				// editing modes
+				if(val > 0){
+					switch(button,
+						20, { mode = 'note'; this.updateInternalState(true);       },
+						21, { mode = 'repetition'; this.updateInternalState(true); },
+						22, { mode = 'octave'; this.updateInternalState(true);     },
+						23, { mode = 'length'; this.updateInternalState(true);     },
+					)
+				};
+
+				// mode.postln;
 			};
 
 			/* VALUE KEYS  */
 			if(((button > 11) && (button < 20)) && (val > 0)){
-
+				
 			};
 		};
 	}
@@ -158,6 +166,11 @@ LaunchpadNoteSequencer {
 		this.updateInternalState(true);
 	}
 
+	lengthSelection{|length|
+		this.numSteps = length + 1;
+		this.updateInternalState(true);
+	}
+
 	/* PLAYBACK **/
 	next {
 		var currentStep;
@@ -194,9 +207,9 @@ LaunchpadNoteSequencer {
 		};
 	}
 
-	play {|note, amp|
-		var freq = Scale.minor.degreeToFreq(note, 60.midicps, 1).postln;
-		this.synth = synthFunc.play(args: [\freq, freq, \amp, 0.4]);
+	play {|note, amp=1, octave=1|
+		var freq = Scale.minor.degreeToFreq(note, 60.midicps, octave);
+		this.synth = synthFunc.play(args: [\freq, freq, \amp, 0.1]);
 		NodeWatcher.register(synth);
 	}
 
@@ -220,7 +233,7 @@ LaunchpadNoteSequencer {
 		this.updateInternalState(true);
 	}
 
-	updateInternalState {|reset = false|
+	updateInternalState {|reset = true|
 		// fill an array with the appropriate horizontal slice of the sequence
 		var innerGrid, outerGrid;
 		var state;
@@ -302,15 +315,30 @@ LaunchpadNoteSequencer {
 				'octave', {
 					led = 0;
 					colour = 0;
-				}
+				},
 			);
-
 
 			[led, colour]
 		};
 
+		if(mode == 'length'){
+			// draw the two upper rows orange with the LED that has the same
+			// number as the number of sequencer steps a deeper orange
+			innerGrid = 16.collect{|length|
+				var led, colour;
+				led = length;
+				if((length + 1) == numSteps){
+					colour = 8;
+				}{
+					colour = 60;
+				};
+				
+				[led, colour]
+			}
+		};
+
 		// light up the modifiers
-		outerGrid = [[4, 16], [5, 16], [7, 16], [20, 16], [21, 16], [22, 16]];
+		outerGrid = [[4, 16], [5, 16], [7, 16], [20, 16], [21, 16], [22, 16], [23, 16]];
 
 		state = [innerGrid, outerGrid];
 		

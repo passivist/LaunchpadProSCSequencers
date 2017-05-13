@@ -145,6 +145,7 @@ LaunchpadPro {
 					if(i == modeToActivate){
 						mode.isActive_(true);
 						stateArr = mode.internalState;
+						mode.updateInternalState;
 					} {
 						mode.isActive_(false)
 					}

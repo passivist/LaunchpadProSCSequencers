@@ -25,6 +25,12 @@ LaunchpadNoteSeq {
 		modifier = Set[];
 
 		// start up the sequencer in note mode
+		// mode IDs:
+		// 0: 'note'
+		// 1: 'velocity'
+		// 2: 'octave'
+		// 3: 'filter'
+		// 4: 'repetition'
 		mode = 'note';
 
 		// does it make sense to use a point here... Don't know yet
@@ -32,7 +38,7 @@ LaunchpadNoteSeq {
 		position = [0, 0];
 		
 		// format: [[note, velocity, octave, repetitions, hold], [...]] (in the future maybe ccs etc...)
-		sequence = [0, 0, 0, 0, false] ! 16;
+		sequence = [0, 0, -1, 0, false] ! 16;
 
 		// a counter for the playback position:
 		stepCounter = 0;
@@ -152,16 +158,33 @@ LaunchpadNoteSeq {
 	}
 
 	repSelection { |x, y|
-		var repLookup = (7 .. 0);
+		var repLookup = (6 .. 0);
 		var inputPos = position[0] + x;
-		var repetition = repLookup[y];
+		var repetition;
 
-		sequence[inputPos][3] = repetition;
+		// last row handles hold paremeter
+		if(y == 7){
+			if(sequence[inputPos][4]){
+				sequence[inputPos][4] = false;
+			}{
+				sequence[inputPos][4] = true;
+			}
+		}{
+			repetition = repLookup[y];
+			sequence[inputPos][3] = repetition;
+		};
 		
 		this.updateInternalState(true);
 	}
 
 	octaveSelection{|x, y|
+		var oktLookup = (7 .. 0) - 4;
+		var inputPos = position[0] + x;
+		var oktave;
+
+		oktave = oktLookup[y];
+
+		sequence[inputPos][2] = oktave;
 
 		this.updateInternalState(true);
 	}
@@ -307,14 +330,16 @@ LaunchpadNoteSeq {
 					var rep = item[3];
 					var hold = item[4];
 
-					led = buttonLookup[ i + (rep * 8).floor];
-					colour = 15;
+					led = buttonLookup[ i + ((rep * 8) + 8).floor];
+					if(hold){ colour = 16 }{ colour = 15 };
 				},
 
 				// octave mode: draw the octave states
 				'octave', {
-					led = 0;
-					colour = 0;
+					var okt = item[2];
+
+					led = buttonLookup[ i + ((okt + 4) * 8).floor];
+					colour = 17;
 				},
 			);
 

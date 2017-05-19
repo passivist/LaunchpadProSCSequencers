@@ -94,7 +94,7 @@ LaunchpadDrumSeq {
 		slots[0] = LaunchpadDrumSeqSlot({});
 		selectedSlot = slots[0];
 
-		this.updateInternalState;
+		this.draw;
 	}
 
 	/** INPUT HANDLING */
@@ -129,7 +129,7 @@ LaunchpadDrumSeq {
 	registerSlot {|id, func|
 		slots[id] = LaunchpadDrumSeqSlot(func);
 
-		this.updateInternalState;
+		this.draw;
 	}
 
 	setActiveSlot{ |slot|
@@ -155,7 +155,7 @@ LaunchpadDrumSeq {
 			};	
 		};
 
-		this.updateInternalState;
+		this.draw;
 	}
 	
 	// sequencer logic
@@ -168,7 +168,7 @@ LaunchpadDrumSeq {
 			if(step == 0){ selectedSlot.sequence[i] = 1 }{ selectedSlot.sequence[i] = 0 };	
 		};
 		
-		this.updateInternalState;
+		this.draw;
 	}
 
 	next {
@@ -180,12 +180,12 @@ LaunchpadDrumSeq {
 		
 		count = (count + 1);
 		
-		this.updateInternalState;
+		this.draw;
 	}
 
 	// drawing / interfacing
 	// TODO: wie kann ich hier nur das was sich verändert hat übertragen
-	updateInternalState {
+	draw {
 		var innerGrid = [];
 		var outerGrid = [];
 

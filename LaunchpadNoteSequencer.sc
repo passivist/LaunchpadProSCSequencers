@@ -31,8 +31,8 @@ LaunchpadNoteSeq {
 		// best to keep it simple for now
 		position = [0, 0];
 		
-		// format: [[note, velocity, repetitions, hold], [...]] (in the future maybe ccs etc...)
-		sequence = [0, 0, 0, false] ! 16;
+		// format: [[note, velocity, octave, repetitions, hold], [...]] (in the future maybe ccs etc...)
+		sequence = [0, 0, 0, 0, false] ! 16;
 
 		// a counter for the playback position:
 		stepCounter = 0;
@@ -156,7 +156,7 @@ LaunchpadNoteSeq {
 		var inputPos = position[0] + x;
 		var repetition = repLookup[y];
 
-		sequence[inputPos][2] = repetition;
+		sequence[inputPos][3] = repetition;
 		
 		this.updateInternalState(true);
 	}
@@ -180,15 +180,15 @@ LaunchpadNoteSeq {
 
 		// nextFlag is true before evaluating next() this means that we have
 		// just moved from the previous step --> initialize everything
-		if(nextFlag){ repetitionCounter = currentStep[2] };
+		if(nextFlag){ repetitionCounter = currentStep[3] };
 
 		// check if the velocity of the current step is > 0 if not release any
 		// playing synth.
 		if(currentStep[1] > 0){
 			// if the hold flag of the step is false or nextFlag is true   
-			if(currentStep[3].not || nextFlag){
+			if(currentStep[4].not || nextFlag){
 				if(synth.isPlaying){ synth.release };
-				this.play(currentStep[0], currentStep[1]);		
+				this.play(currentStep[0], currentStep[1], currentStep[2]);
 			}
 		}{
 			if(synth.isPlaying){ synth.release };
@@ -217,7 +217,7 @@ LaunchpadNoteSeq {
 	scroll { |direction|
 		var val;
 
-		if( modifier.includes('shift') ){ val = 8; }{ val = 1; };
+		if( modifier.includes('shift') ){ val = 7; }{ val = 1; };
 
 		switch(direction,
 			// up
@@ -304,8 +304,8 @@ LaunchpadNoteSeq {
 				},
 				// repetition mode: draw the states of the repetition and hold variables
 				'repetition', {
-					var rep = item[2];
-					var hold = item[3];
+					var rep = item[3];
+					var hold = item[4];
 
 					led = buttonLookup[ i + (rep * 8).floor];
 					colour = 15;

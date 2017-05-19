@@ -36,9 +36,9 @@ LaunchpadNoteSeq {
 		// format 'mode': [[valA_0, valB_0, ...], [...]]
 		sequence = (
 			'note':       ('arr': [0, false] ! 16, 'numSteps': 8, 'pos': [0, 0], 'step': 0),
-			'velocity':   ('arr': 0 ! 16, 'numSteps': 8, 'pos': [0, 0], 'step': 0),
+			'velocity':   ('arr': 5 ! 16, 'numSteps': 8, 'pos': [0, 0], 'step': 0),
 			'octave':     ('arr': -1 ! 16, 'numSteps': 8, 'pos': [0, 0], 'step': 0),
-			'filter':     ('arr': -1 ! 16, 'numSteps': 8, 'pos': [0, 0], 'step': 0),
+			'filter':     ('arr': 5 ! 16, 'numSteps': 8, 'pos': [0, 0], 'step': 0),
 			'repetition': ('arr': [0, false] ! 16, 'numSteps': 8, 'pos': [0, 0], 'step': 0),
 		);
 		
@@ -95,7 +95,7 @@ LaunchpadNoteSeq {
 					5, { if(val > 0){ modifier.add('length') }{ modifier.remove('length') } },
 				);
 
-				// for the modifiers we actually want to draw on note-off
+				// for the modifiers we actually want to redraw on note-off
 				if(val == 0){ this.draw(true) };
 			};
 			
@@ -113,6 +113,7 @@ LaunchpadNoteSeq {
 			};
 
 			/* VALUE KEYS  */
+			// implement pattern read and write here
 			if(((button > 11) && (button < 20)) && (val > 0)){
 				
 			};
@@ -167,11 +168,16 @@ LaunchpadNoteSeq {
 	}
 
 	velocitySelection{ |x, y|
+		var velLookup = (7 .. 0);
+		var inputPos = sequence.velocity.pos[0] + x;
+		var velocity;
+		
 		if(modifier.includes('length').not){
-
+			velocity = velLookup[y];
+			sequence.velocity.arr[inputPos] = velocity;
 		}{
 			var length = (x+1) + (y*8);
-			sequence.filter.numSteps = length;			
+			sequence.velocity.numSteps = length;			
 		}
 	}
 
@@ -182,7 +188,6 @@ LaunchpadNoteSeq {
 
 		if(modifier.includes('length').not){
 			oktave = oktLookup[y];
-			
 			sequence.octave.arr[inputPos] = oktave;
 		}{
 			var length = (x+1) + (y*8);
@@ -192,8 +197,13 @@ LaunchpadNoteSeq {
 	}
 
 	filterSelection{ |x, y|
+		var filtLookup = (7 .. 0);
+		var inputPos = sequence.filter.pos[0] + x;
+		var filter;
+		
 		if(modifier.includes('length').not){
-
+			filter = filtLookup[y];
+			sequence.filter.arr[inputPos] = filter;
 		}{
 			var length = (x+1) + (y*8);
 			sequence.filter.numSteps = length;			
@@ -243,7 +253,8 @@ LaunchpadNoteSeq {
 				this.play(
 					currentNote[0],
 					sequence.velocity.arr[sequence.velocity.step],
-					sequence.octave.arr[sequence.octave.step]
+					sequence.octave.arr[sequence.octave.step],
+					sequence.filter.arr[sequence.filter.step]
 				);
 			}
 		}{
@@ -267,9 +278,11 @@ LaunchpadNoteSeq {
 		};
 	}
 
-	play {|note, velocity=1, octave=1|
-		var freq = Scale.minor.degreeToFreq(note, 60.midicps, octave);
-		this.synth = synthFunc.play(args: [\freq, freq, \amp, 0.1]);
+	play {|note, velocity=1, octave=1, filter=1|
+		var freq  = Scale.minor.degreeToFreq(note, 60.midicps, octave);
+		var vel   = velocity / 8;
+		var filt  = filter / 8;
+		this.synth = synthFunc.play(args: [\freq, freq, \amp, 0.1 * vel, \filter, filt ]);
 		NodeWatcher.register(synth);
 	}
 
@@ -366,9 +379,11 @@ LaunchpadNoteSeq {
 			'velocity', {
 				if(modifier.includes('length').not){
 					innerGrid = 8.collect{|i|
-						led = 0;
-						colour = 0;
+						var vel = sequence.velocity.arr[i + sequence.velocity.pos[0] ];
 						
+						led = buttonLookup[ i + (vel * 8).floor];
+						colour = 9;
+
 						[led, colour]
 					}
 				}{
@@ -412,11 +427,14 @@ LaunchpadNoteSeq {
 
 			'filter', {
 				if(modifier.includes('length').not){
-					
-					led = 0;
-					colour = 0;
-					
-					innerGrid = [[led, colour]];
+					innerGrid = 8.collect{|i|
+						var filt = sequence.filter.arr[i + sequence.filter.pos[0] ];
+						
+						led = buttonLookup[ i + (filt * 8).floor];
+						colour = 41;
+
+						[led, colour]
+					}
 				}{
 					innerGrid = 16.collect{|length|
 						var led, colour;

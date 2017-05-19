@@ -412,6 +412,10 @@ LaunchpadProMode {
 		isActive = active;
 		internalState = nil;
 	}
+
+	draw {
+		launchpad.resetLeds;
+	}
 	
 	// called from LaunchpadPro and should be implemented in all inheriting modes to
 	// access the MIDI

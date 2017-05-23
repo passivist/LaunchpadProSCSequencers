@@ -9,7 +9,7 @@ LaunchpadNoteSeq {
 	var buttonLookup;
 
 	var <>sequence;
-	var <>stepCounter, <>numSteps, nextFlag, repetitionCounter, holdFlag;
+	var <>globalCounter, <>numSteps, <nextFlag, <repetitionCounter, <holdFlag;
 
 	var <>synthFunc, <>synth;
 	
@@ -43,6 +43,11 @@ LaunchpadNoteSeq {
 		);
 		
 		// a counter for the playback position:
+		// we'll keep that one global in the scope of the sequencer
+		// and all the counters of the different modes will derive
+		// from this counter so we can reset everything easily and
+		// phasing is more controlled
+		globalCounter = 0;
 		nextFlag = true;
 		repetitionCounter = 0;
 		holdFlag = false;
@@ -93,6 +98,7 @@ LaunchpadNoteSeq {
 				switch(button,
 					4, { if(val > 0){ modifier.add('shift')  }{ modifier.remove('shift')  } },
 					5, { if(val > 0){ modifier.add('length') }{ modifier.remove('length') } },
+					7, { if(val > 0){ this.clear } },
 				);
 
 				// for the modifiers we actually want to redraw on note-off
@@ -233,12 +239,16 @@ LaunchpadNoteSeq {
 		};		
 	}
 
+	clear {
+		sequence.note = ('arr': [0, false] ! 16, 'numSteps': 8, 'pos': [0, 0], 'step': 0); 
+	}
+
 	/* PLAYBACK **/
 	next {
 		var currentNote;
 		var holdFlag = sequence.repetition.arr[sequence.repetition.step][1];
 		currentNote = sequence.note.arr[sequence.note.step];
-		// postf("currentNote: %; stepCounter: %; nextFlag %;\n", currentNote, stepCounter, nextFlag);
+		// postf("currentNote: %; globalCounter: %; nextFlag %;\n", currentNote, globalCounter, nextFlag)
 
 		// nextFlag is true before evaluating next() this means that we have
 		// just moved from the previous step --> initialize everything
@@ -264,6 +274,9 @@ LaunchpadNoteSeq {
 		// if this is the first step set nextFlag to false
 		if(nextFlag){ nextFlag = false };
 
+		// iterate the global counter before updating the step count of the sequences
+		globalCounter = globalCounter + 1;
+		
 		// if repetitionCounter reaches 0 we set nextFlag to true and
 		// iterate to the next step. If not we decrement repetitionCounter
 		if(repetitionCounter < 1){
@@ -271,11 +284,13 @@ LaunchpadNoteSeq {
 
 			// increment all the steps of the various sequences
 			sequence.do{|item, i|
-				item.step = (item.step + 1) % item.numSteps;
+				item.step = globalCounter % (item.numSteps + repetitionCounter);
 			};
 		}{
 			repetitionCounter = repetitionCounter - 1;
 		};
+
+
 	}
 
 	play {|note, velocity=1, octave=1, filter=1|

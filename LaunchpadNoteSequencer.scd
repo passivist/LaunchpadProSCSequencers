@@ -22,6 +22,14 @@ Tdef(\test, {
 }).play;
 )
 
+s.boot
+
+~n.globalCounter
+~n.sequence.note.step
+~n.nextFlag
+~n.next
+
+
 Tdef(\test).stop;
 
 ~n.sequence.note.numSteps = 5;

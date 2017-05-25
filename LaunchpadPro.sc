@@ -39,12 +39,6 @@ LaunchpadPro {
 		];
 
 		/** STARTUP */
-		/*
-			if(MIDIClient.initialized.not){
-			Error("MIDIClient not initialized. Must call MIDIClient.init before creating a LaunchpadPro Object").throw
-			};
-		*/
-		
 		// It's important that this comes before MIDIOut.connect because it will delete all prior connections
 		MIDIIn.connectAll();
 

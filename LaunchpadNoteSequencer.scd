@@ -22,28 +22,49 @@ s.waitForBoot{
 		Out.ar(out, sig*amp)
 	};
 
+	
 	Ndef(\synth, { SoundIn.ar(0) ! 2 }).play;
+
+	SynthDef(\ping, {|out|
+		var env, sig;
+		env = EnvGen.ar(Env.perc(0.001, 0.03, 1, -4), doneAction: 2);
+		sig = SinOsc.ar(1000) ! 2;
+
+		Out.ar(out, sig * env * 0.3);
+	}).add;
+
+	Tdef(\ping, {
+		loop{
+			Synth(\ping);
+			0.5.wait;	
+		}
+	});
+
+	Tdef(\test, {
+		loop{
+			~n.next;		
+			0.125.wait;
+		}
+	});
 }
 )
 
 (
-Tdef(\test, {
-	loop{
-		~n.next;
-		
-		0.125.wait;
-	}
-}).play;
+Tdef(\test).play;
+Tdef(\ping).play;
 )
 
-
+(
 Tdef(\test).stop;
-
+Tdef(\ping).stop;
+)
 TempoClock.tempo = 100/120;
 
 ~n.midiOut.allNotesOff(2)
 
-~n.globalCounter
+~n.globalCounter / ~n.clockDivision;
+~n.next;
 ~n.sequence.note
 ~n.clockDivision = 3;
 
+~n.next;

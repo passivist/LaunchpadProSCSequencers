@@ -11,7 +11,7 @@ LaunchpadNoteSeq {
 	var <>sequence;
 	var <>globalCounter, <>clockDivision, <nextFlag, <repetitionCounter, <holdFlag;
 	
-	var scale;
+	var scale, scales;
 	var <>synthFunc, <>synth, <>midiOut, <>midiChannel;
 	var <>midiOutFlag;
 	
@@ -60,7 +60,14 @@ LaunchpadNoteSeq {
 		synthFunc = {};
 		midiOutFlag = false;
 		midiChannel = 1;
-		scale = Scale.minor;
+
+		scales = [
+			Scale.minor, Scale.harmonicMinor, Scale.melodicMinor, Scale.minorPentatonic,
+			Scale.major, Scale.harmonicMajor, Scale.melodicMajor, Scale.majorPentatonic,
+			Scale.dorian, Scale.phrygian, Scale.lydian, Scale.lydianMinor,
+			Scale.mixolydian, Scale.locrian, Scale.locrianMajor, Scale.hexDorian,
+		];
+		scale = scales[0];
 		
 		//is there a more elegant and safe way than lookuptables?
 		buttonLookup = [
@@ -189,6 +196,12 @@ LaunchpadNoteSeq {
 					clockDivision = divide;
 				}
 			},
+			'scale', {
+				var scl = x + (y*8);
+				if(scl < scales.size){
+					scale = scales[scl];					
+				}
+			},
 		);	
 	}
 
@@ -301,14 +314,16 @@ LaunchpadNoteSeq {
 	next {
 		var currentNote;
 		var holdFlag = sequence.repetition.arr[sequence.repetition.step][1];
+		var phase = globalCounter / clockDivision;
 		currentNote = sequence.note.arr[sequence.note.step];
 		// postf("currentNote: %; globalCounter: %; nextFlag %;\n", currentNote, globalCounter, nextFlag)
 
 		// iterate the global counter before updating the step count of the sequences
+		// but after calculating the phase
 		globalCounter = globalCounter + 1;
 
 		// wait for the next step
-		if((globalCounter/clockDivision).frac == 0){
+		if(phase.frac == 0){
 			// nextFlag is true before evaluating next() this means that we have
 			// just moved from the previous step --> initialize everything
 			if(nextFlag){ repetitionCounter =  sequence.repetition.arr[sequence.repetition.step][0] };
@@ -359,9 +374,9 @@ LaunchpadNoteSeq {
 		if(midiOutFlag){
 			var midinote, octOffset;
 			if(note >= 0){
-				octOffset = ((note + 1) / 8).floor;
+				octOffset = ((note + 1) / (scale.size + 1)).floor;
 			}{
-				octOffset = (note / 8).floor;				
+				octOffset = (note / (scale.size + 1)).floor;				
 			};
 
 			midinote = 60 + scale.wrapAt(note) + ((octOffset+1)*12) + (octave*12);
@@ -468,6 +483,18 @@ LaunchpadNoteSeq {
 				};
 				arr;
 			},
+			'scale', {
+				arr = scales.size.collect{|i|
+					led = i;
+					if(scales[i] == scale ){
+						colour = 8;
+					}{
+						colour = 17;
+					};
+					
+					[led, colour]
+				}
+			}
 		);
 
 		^arr;

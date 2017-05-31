@@ -58,7 +58,7 @@ LaunchpadDrumSeq {
 	var slotLookup;
 	var modifier;
 
-	var count;
+	var <count;
 
 	/*
 		this is an array holding the state of all the values relevant for drawing

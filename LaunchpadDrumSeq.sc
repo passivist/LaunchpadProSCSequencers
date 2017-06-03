@@ -5,6 +5,8 @@ LaunchpadDrumSeqSlot {
 	var <>selectedVar;
 	var <>mute;
 
+	var <>parA, <>parB, <>parC, <>parD;
+
 	*new { |func|
 		^super.new.init(func)
 	}
@@ -18,6 +20,11 @@ LaunchpadDrumSeqSlot {
 		selectedVar = 0;
 
 		synthFunc = func;
+
+		parA = 0;
+		parB = 0;
+		parC = 0;
+		parD = 0;
 		
 		mute = false;
 	}
@@ -40,7 +47,8 @@ LaunchpadDrumSeqSlot {
 		if(mute.not){
 			if(sequence[i] > 0){
 				if(synth.isPlaying){ synth.release };
-				synth = synthFunc.play;
+				// the synthfunc expects 4 arguments
+				synth = synthFunc.play(args: [\parA, parA, \parB, parB, \parC, parC, \parD, parD]);
 				NodeWatcher.register(synth);	
 			};
 		};

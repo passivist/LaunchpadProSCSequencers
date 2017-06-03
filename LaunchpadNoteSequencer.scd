@@ -7,8 +7,8 @@ s.waitForBoot{
 	s.sync;
 	
 	// setup for MIDIOut on Linux:
-	~n.midiOut = MIDIOut(4);
-	~n.midiOut.connect(4);
+	~n.midiOut = MIDIOut(1);
+	~n.midiOut.connect(1);
 	~n.midiOut.latency = 0;
 	~n.midiChannel = 2;
 	~n.midiOutFlag = true;
@@ -21,21 +21,26 @@ s.waitForBoot{
 		sig = MoogVCF.ar(sig, filter.linexp(0, 1, 50, 5000), 0.7, 4).tanh;
 		Out.ar(out, sig*amp)
 	};
-
 	
 	Ndef(\synth, { SoundIn.ar(0) ! 2 }).play;
 
-	SynthDef(\ping, {|out|
+	SynthDef(\ping, {|out, freq=1000|
 		var env, sig;
 		env = EnvGen.ar(Env.perc(0.001, 0.03, 1, -4), doneAction: 2);
-		sig = SinOsc.ar(1000) ! 2;
+		sig = SinOsc.ar(freq) ! 2;
 
 		Out.ar(out, sig * env * 0.3);
 	}).add;
 
 	Tdef(\ping, {
 		loop{
-			Synth(\ping);
+			Synth(\ping, [\freq, 1500]);
+			0.5.wait;	
+			Synth(\ping, [\freq, 1000]);
+			0.5.wait;	
+			Synth(\ping, [\freq, 1000]);
+			0.5.wait;
+			Synth(\ping, [\freq, 1000]);
 			0.5.wait;	
 		}
 	});
@@ -53,6 +58,8 @@ s.waitForBoot{
 Tdef(\test).play;
 Tdef(\ping).play;
 )
+
+~n.uncertainty = 0.01
 
 (
 Tdef(\test).stop;

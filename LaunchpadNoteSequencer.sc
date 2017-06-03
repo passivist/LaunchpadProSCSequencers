@@ -14,6 +14,8 @@ LaunchpadNoteSeq {
 	var scale, scales;
 	var <>synthFunc, <>synth, <>midiOut, <>midiChannel;
 	var <>midiOutFlag;
+
+	var <>uncertainty;
 	
 	*new { |modeID, launchpad, isActive=false|
 		^super.new.init(modeID, launchpad, isActive);
@@ -68,6 +70,8 @@ LaunchpadNoteSeq {
 			Scale.mixolydian, Scale.locrian, Scale.locrianMajor, Scale.hexDorian,
 		];
 		scale = scales[0];
+
+		uncertainty = 0;
 		
 		//is there a more elegant and safe way than lookuptables?
 		buttonLookup = [
@@ -306,6 +310,22 @@ LaunchpadNoteSeq {
 		);	
 	}
 
+	mutateNotes {
+		var curStep = sequence.note.step;
+		var curNote = sequence.note.arr[curStep];
+
+		var choice = [false, true].wchoose([1-uncertainty, uncertainty]);
+
+		//[curStep, curNote, choice].postln;
+		
+		if(choice){
+			sequence.note.arr[curStep][1] = 0.7.coin;
+			sequence.note.arr[curStep][0] = (0 .. 7).choose;
+
+			this.draw(true);
+		};
+	}
+
 	clear {
 		sequence.note = ('arr': [0, false] ! 16, 'numSteps': 8, 'pos': [0, 0], 'step': 0); 
 	}
@@ -355,9 +375,11 @@ LaunchpadNoteSeq {
 			if(repetitionCounter < 1){
 				nextFlag = true;
 
+				this.mutateNotes;
+				
 				// increment all the steps of the various sequences
 				sequence.do{|item, i|
-					item.step = (globalCounter/clockDivision).floor % (item.numSteps + repetitionCounter);
+					item.step = (globalCounter/clockDivision).ceil % (item.numSteps + repetitionCounter);
 				};
 			}{
 				repetitionCounter = repetitionCounter - 1;
@@ -702,6 +724,8 @@ LaunchpadNoteSeq {
 		var state;
 		
 		var arrayCounter;
+
+		if(this.isActive.not){ ^nil };
 		// if the reset flag is set reset the inner Grid before continuing
 		// this allows us to make scrolling work without complicated maths
 		if(reset){
@@ -733,12 +757,12 @@ LaunchpadNoteSeq {
 		innerGrid = innerGrid.flatIf{|item| item[0].isArray};
 		
 		// light up the modifiers
-		outerGrid = [[4, 16], [5, 16], [6, 16], [7, 16], [20, 16], [21, 16], [22, 16], [23, 16], [24, 16]];
+		outerGrid = [[4, 16], [5, 16], [6, 16], [7, 16], [11, 6], [20, 16], [21, 16], [22, 16], [23, 16], [24, 16]];
 		
 		state = [innerGrid, outerGrid];
 		
 		internalState = state;
 		
-		launchpad.updateLeds(state);
+		if(this.isActive){ launchpad.updateLeds(state) };
 	}
 }

@@ -15,7 +15,7 @@ LaunchpadNoteSeq {
 	var <>synthFunc, <>synth, <>midiOut, <>midiChannel;
 	var <>midiOutFlag;
 
-	var <>uncertainty;
+	var <>uncertainty, <>changeGates;
 	
 	*new { |modeID, launchpad, isActive=false|
 		^super.new.init(modeID, launchpad, isActive);
@@ -72,6 +72,7 @@ LaunchpadNoteSeq {
 		scale = scales[0];
 
 		uncertainty = 0;
+		changeGates = false;
 		
 		//is there a more elegant and safe way than lookuptables?
 		buttonLookup = [
@@ -319,7 +320,8 @@ LaunchpadNoteSeq {
 		//[curStep, curNote, choice].postln;
 		
 		if(choice){
-			sequence.note.arr[curStep][1] = 0.7.coin;
+			// only change the gates if the user says so
+			if(changeGates){ sequence.note.arr[curStep][1] = 0.7.coin };
 			sequence.note.arr[curStep][0] = (0 .. 7).choose;
 
 			this.draw(true);

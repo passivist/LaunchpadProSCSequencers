@@ -252,7 +252,7 @@ LaunchpadDrumSeq {
 		};
 
 		// always light the modifiers
-		outerGrid = [[4, 16], [7, 16], [22, 16]];
+		outerGrid = [[4, 16], [7, 6], [22, 16]];
 
 		// construct the complete array
 		state = [innerGrid, outerGrid];

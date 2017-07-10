@@ -16,6 +16,7 @@ LaunchpadNoteSeq {
 	var <>midiOutFlag;
 
 	var <>uncertainty, <>changeGates;
+	var <>parA, <>parB, <>parC, <>parD;
 	
 	*new { |modeID, launchpad, isActive=false|
 		^super.new.init(modeID, launchpad, isActive);
@@ -73,6 +74,12 @@ LaunchpadNoteSeq {
 
 		uncertainty = 0;
 		changeGates = false;
+
+		// initialize parameters for synth control
+		parA = 0;
+		parB = 0;
+		parC = 0;
+		parD = 0;
 		
 		//is there a more elegant and safe way than lookuptables?
 		buttonLookup = [
@@ -407,7 +414,11 @@ LaunchpadNoteSeq {
 			
 			midiOut.noteOn(midiChannel, midinote, vel.linlin(0, 1, 0, 127).floor);
 		}{
-			this.synth = synthFunc.play(args: [\freq, freq, \amp, 0.1 * vel, \filter, filt ]);
+			this.synth = synthFunc.play(args: [
+				\freq, freq, \amp, 0.1 * vel, \filter, filt,
+				\parA, parA, \parB, parB, \parC, parC, \parD, parD
+
+			]);
 			NodeWatcher.register(synth);			
 		};
 	}
